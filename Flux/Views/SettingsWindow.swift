@@ -32,7 +32,7 @@ final class SettingsWindowController: NSWindowController, NSTabViewDelegate {
 
     convenience init() {
         let window = GlassWindow(
-            contentRect: NSRect(origin: .zero, size: Design.WindowSize.settings),
+            contentRect: NSRect(origin: .zero, size: NSSize(width: Design.WindowSize.settings.width, height: Design.WindowSize.settingsAppearance)),
             styleMask: [.titled, .closable, .fullSizeContentView],
             backing: .buffered,
             defer: false
@@ -508,5 +508,29 @@ final class SettingsWindowController: NSWindowController, NSTabViewDelegate {
 
     override func cancelOperation(_ sender: Any?) {
         close()
+    }
+
+    // MARK: - NSTabViewDelegate
+
+    func tabView(_ tabView: NSTabView, didSelect tabViewItem: NSTabViewItem?) {
+        guard let window = window, let identifier = tabViewItem?.identifier as? String else { return }
+
+        let newHeight: CGFloat
+        switch identifier {
+        case "appearance":
+            newHeight = Design.WindowSize.settingsAppearance
+        case "shortcuts":
+            newHeight = Design.WindowSize.settingsShortcuts
+        case "general":
+            newHeight = Design.WindowSize.settingsGeneral
+        default:
+            return
+        }
+
+        var frame = window.frame
+        let heightDiff = newHeight - frame.height
+        frame.origin.y -= heightDiff
+        frame.size.height = newHeight
+        window.setFrame(frame, display: true, animate: true)
     }
 }

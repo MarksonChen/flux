@@ -43,7 +43,9 @@ The timer uses timestamp-based calculation to survive system sleep:
 - **FluxApp.swift**: App delegate, manages all window controllers, implements `ShortcutManagerDelegate`
 - **TimerController**: Singleton managing timer state, updates display every 0.1s via Timer
 - **TimerWindow**: Main floating NSWindow with borderless, transparent, click-through configuration
+- **GlassWindow**: Base window class with glassmorphism effect (blur, gradient, border) for dialogs
 - **Persistence**: UserDefaults wrapper handling JSON encoding/decoding for complex types
+- **DesignConstants**: UI design tokens for consistent spacing, sizing, and styling
 
 ### Window Configuration
 
@@ -51,16 +53,16 @@ The main timer window uses these critical AppKit settings:
 - `NSWindow.Level.floating` for always-on-top
 - `NSWindow.StyleMask.borderless` for no chrome
 - `backgroundColor = .clear`, `isOpaque = false` for transparency
-- `ignoresMouseEvents` toggled for click-through vs interaction mode
+- `collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenAuxiliary]`
 
 ### Persistence Keys
 
 All state stored in UserDefaults via `Persistence.shared`:
 - `timerState`: Timer accumulated time and running state
-- `appSettings`: Appearance settings (font, color, opacity, shadow)
+- `appSettings`: Appearance settings (font, fontSize, textColorHex, opacity, launchAtLogin)
 - `shortcutBindings`: Keyboard and mouse action bindings
-- `timerEvents`: History log (max entries configurable)
-- `windowPosition`, `windowDisplayID`: Multi-monitor aware positioning
+- `timerEvents`: History log (max 100 entries)
+- `windowX`, `windowY`, `windowDisplayID`: Multi-monitor aware positioning
 
 ## Default Shortcuts
 
@@ -75,6 +77,15 @@ All state stored in UserDefaults via `Persistence.shared`:
 | Left-click | Toggle pause/resume |
 | Right-click | Reset to 00:00 |
 
+## Default Appearance
+
+| Setting | Default |
+|---------|---------|
+| Font | Arial Black |
+| Size | 32pt |
+| Color | #5DFFFF (cyan) |
+| Opacity | 18% |
+
 ## Reference
 
-See [docs/PRD.md](docs/PRD.md) for complete product requirements and specifications.
+See [docs/wiki.md](docs/wiki.md) for comprehensive documentation.

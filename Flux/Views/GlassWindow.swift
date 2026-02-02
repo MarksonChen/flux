@@ -93,16 +93,16 @@ final class GlassWindow: NSWindow {
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { true }
 
-    override func keyDown(with event: NSEvent) {
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
         let chars = event.charactersIgnoringModifiers ?? ""
         let hasCommand = event.modifierFlags.contains(.command)
 
         // Handle cmd+W to close window
         if hasCommand && chars.lowercased() == "w" {
             close()
-            return
+            return true
         }
 
-        super.keyDown(with: event)
+        return super.performKeyEquivalent(with: event)
     }
 }

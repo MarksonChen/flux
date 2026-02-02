@@ -29,7 +29,7 @@ final class SetTimeWindowController: NSWindowController {
 
         let stackView = NSStackView()
         stackView.orientation = .vertical
-        stackView.spacing = Design.Spacing.lg
+        stackView.spacing = Design.Spacing.md
         stackView.translatesAutoresizingMaskIntoConstraints = false
         contentView.addSubview(stackView)
 
@@ -127,7 +127,14 @@ final class SetTimeWindowController: NSWindowController {
         button.wantsLayer = true
 
         if isPrimary {
-            button.contentTintColor = .white
+            let attributedTitle = NSAttributedString(
+                string: title,
+                attributes: [
+                    .foregroundColor: NSColor.white,
+                    .font: NSFont.systemFont(ofSize: NSFont.systemFontSize)
+                ]
+            )
+            button.attributedTitle = attributedTitle
             button.layer?.backgroundColor = NSColor.controlAccentColor.cgColor
             button.layer?.cornerRadius = Design.CornerRadius.small
         }
@@ -156,6 +163,11 @@ final class SetTimeWindowController: NSWindowController {
         hoursStepper.stringValue = "0"
         minutesStepper.stringValue = "00"
         secondsStepper.stringValue = "00"
+    }
+
+    override func showWindow(_ sender: Any?) {
+        super.showWindow(sender)
+        window?.makeFirstResponder(minutesStepper)
     }
 
     @objc private func cancel() {

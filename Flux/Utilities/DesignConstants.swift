@@ -48,10 +48,13 @@ enum Design {
 
     // MARK: - Window Sizes
     enum WindowSize {
-        static let setTime = NSSize(width: 320, height: 180)
-        static let history = NSSize(width: 450, height: 730)
+        static let setTime = NSSize(width: 260, height: 140)
+        static let history = NSSize(width: 450, height: 700)
         static let historyMin = NSSize(width: 380, height: 250)
         static let settings = NSSize(width: 480, height: 400)
+        static let settingsAppearance: CGFloat = 280
+        static let settingsShortcuts: CGFloat = 400
+        static let settingsGeneral: CGFloat = 120
         static let timer = NSSize(width: 150, height: 60)
     }
 }

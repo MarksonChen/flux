@@ -25,7 +25,7 @@ final class EventLogger {
         addEvent(TimerEvent(eventType: .set, timeValue: newTime, previousValue: previousTime))
     }
 
-    private static let maxEntries = 100
+    private static let maxEntries = 20
 
     private func addEvent(_ event: TimerEvent) {
         var currentEvents = Persistence.shared.timerEvents
