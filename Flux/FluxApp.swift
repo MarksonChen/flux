@@ -46,7 +46,7 @@ extension FluxApp: ShortcutManagerDelegate {
             setTimeController = SetTimeWindowController()
         }
         setTimeController?.resetToZero()
-        centerWindow(setTimeController?.window)
+        positionWindowAboveTimer(setTimeController?.window)
         setTimeController?.showWindow(nil)
         setTimeController?.window?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
@@ -57,7 +57,7 @@ extension FluxApp: ShortcutManagerDelegate {
             historyController = HistoryWindowController()
         }
         historyController?.refreshEvents()
-        centerWindow(historyController?.window)
+        positionWindowAboveTimer(historyController?.window)
         historyController?.showWindow(nil)
         historyController?.window?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
@@ -68,21 +68,18 @@ extension FluxApp: ShortcutManagerDelegate {
             settingsController = SettingsWindowController()
             settingsController?.delegate = self
         }
-        centerWindow(settingsController?.window)
+        positionWindowAboveTimer(settingsController?.window)
         settingsController?.showWindow(nil)
         settingsController?.window?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
     }
 
-    private func centerWindow(_ window: NSWindow?) {
+    private func positionWindowAboveTimer(_ window: NSWindow?) {
         guard let window = window else { return }
-        let timerCenter = NSPoint(
-            x: timerWindow.frame.midX,
-            y: timerWindow.frame.midY
-        )
+        // Position window above the timer with 10 pixel gap
         let newOrigin = NSPoint(
-            x: timerCenter.x - window.frame.width / 2,
-            y: timerCenter.y - window.frame.height / 2
+            x: timerWindow.frame.midX - window.frame.width / 2,
+            y: timerWindow.frame.maxY + 10
         )
         window.setFrameOrigin(newOrigin)
     }

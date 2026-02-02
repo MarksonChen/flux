@@ -11,7 +11,7 @@ final class HistoryWindowController: NSWindowController, NSTableViewDataSource, 
             backing: .buffered,
             defer: false
         )
-        window.title = "History"
+        window.title = "Event History"
         window.center()
         window.minSize = NSSize(width: 380, height: 250)
 
@@ -22,18 +22,6 @@ final class HistoryWindowController: NSWindowController, NSTableViewDataSource, 
 
     private func setupUI() {
         guard let contentView = window?.contentView else { return }
-
-        // Header with title
-        let headerLabel = NSTextField(labelWithString: "Event History")
-        headerLabel.font = NSFont.systemFont(ofSize: 16, weight: .semibold)
-        headerLabel.textColor = .labelColor
-        headerLabel.translatesAutoresizingMaskIntoConstraints = false
-        contentView.addSubview(headerLabel)
-
-        NSLayoutConstraint.activate([
-            headerLabel.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 40),
-            headerLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 20)
-        ])
 
         // Scroll view with table
         let scrollView = NSScrollView()
@@ -49,7 +37,7 @@ final class HistoryWindowController: NSWindowController, NSTableViewDataSource, 
         contentView.addSubview(scrollView)
 
         NSLayoutConstraint.activate([
-            scrollView.topAnchor.constraint(equalTo: headerLabel.bottomAnchor, constant: 16),
+            scrollView.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 40),
             scrollView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
             scrollView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
             scrollView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -16)
@@ -125,6 +113,7 @@ final class HistoryWindowController: NSWindowController, NSTableViewDataSource, 
             let textField = NSTextField(labelWithString: "")
             textField.font = NSFont.systemFont(ofSize: 12)
             textField.lineBreakMode = .byTruncatingTail
+            textField.alignment = .center
             textField.translatesAutoresizingMaskIntoConstraints = false
             cellView?.addSubview(textField)
             cellView?.textField = textField

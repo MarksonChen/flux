@@ -61,6 +61,16 @@ final class ShortcutManager {
         performMouseAction(bindings.rightClickAction)
     }
 
+    func handleLeftDoubleClick() {
+        let bindings = Persistence.shared.shortcutBindings
+        performMouseAction(bindings.leftDoubleClickAction)
+    }
+
+    func handleRightDoubleClick() {
+        let bindings = Persistence.shared.shortcutBindings
+        performMouseAction(bindings.rightDoubleClickAction)
+    }
+
     private func performMouseAction(_ action: ShortcutBindings.MouseAction) {
         switch action {
         case .togglePauseResume:

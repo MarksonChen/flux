@@ -100,6 +100,12 @@ final class SetTimeWindowController: NSWindowController {
         field.layer?.cornerRadius = 8
         field.focusRingType = .none
 
+        // Disable text completion to avoid ViewBridge messages
+        field.isAutomaticTextCompletionEnabled = false
+        if let cell = field.cell as? NSTextFieldCell {
+            cell.allowsEditingTextAttributes = false
+        }
+
         field.widthAnchor.constraint(equalToConstant: 40).isActive = true
         field.heightAnchor.constraint(equalToConstant: 30).isActive = true
 

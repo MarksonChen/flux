@@ -17,7 +17,6 @@ final class SettingsWindowController: NSWindowController, NSTabViewDelegate {
     private var opacitySlider: NSSlider!
     private var opacityLabel: NSTextField!
 
-    private var maxHistoryField: NSTextField!
     private var launchAtLoginCheckbox: NSButton!
 
     private var togglePauseResumeRecorder: ShortcutRecorderView!
@@ -28,6 +27,8 @@ final class SettingsWindowController: NSWindowController, NSTabViewDelegate {
     private var quitRecorder: ShortcutRecorderView!
     private var leftClickPopup: NSPopUpButton!
     private var rightClickPopup: NSPopUpButton!
+    private var leftDoubleClickPopup: NSPopUpButton!
+    private var rightDoubleClickPopup: NSPopUpButton!
 
     convenience init() {
         let window = GlassWindow(
@@ -62,7 +63,6 @@ final class SettingsWindowController: NSWindowController, NSTabViewDelegate {
 
         setupAppearanceTab()
         setupShortcutsTab()
-        setupHistoryTab()
         setupGeneralTab()
     }
 
@@ -175,10 +175,10 @@ final class SettingsWindowController: NSWindowController, NSTabViewDelegate {
         view.addSubview(scrollView)
 
         NSLayoutConstraint.activate([
-            scrollView.topAnchor.constraint(equalTo: view.topAnchor),
-            scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
+            scrollView.topAnchor.constraint(equalTo: view.topAnchor, constant: 12),
+            scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
+            scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
+            scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -16)
         ])
 
         let stack = NSStackView()
@@ -193,11 +193,11 @@ final class SettingsWindowController: NSWindowController, NSTabViewDelegate {
         scrollView.contentView = clipView
 
         NSLayoutConstraint.activate([
-            stack.topAnchor.constraint(equalTo: clipView.topAnchor, constant: 20),
-            stack.leadingAnchor.constraint(equalTo: clipView.leadingAnchor, constant: 20),
-            stack.trailingAnchor.constraint(equalTo: clipView.trailingAnchor, constant: -20),
-            stack.bottomAnchor.constraint(lessThanOrEqualTo: clipView.bottomAnchor, constant: -20),
-            stack.widthAnchor.constraint(equalTo: scrollView.widthAnchor, constant: -40)
+            stack.topAnchor.constraint(equalTo: clipView.topAnchor, constant: 8),
+            stack.leadingAnchor.constraint(equalTo: clipView.leadingAnchor),
+            stack.trailingAnchor.constraint(equalTo: clipView.trailingAnchor),
+            stack.bottomAnchor.constraint(lessThanOrEqualTo: clipView.bottomAnchor, constant: -8),
+            stack.widthAnchor.constraint(equalTo: scrollView.widthAnchor)
         ])
 
         let keyboardLabel = createSectionLabel("Keyboard Shortcuts")
@@ -275,6 +275,34 @@ final class SettingsWindowController: NSWindowController, NSTabViewDelegate {
         rightClickRow.addArrangedSubview(rightClickPopup)
         stack.addArrangedSubview(rightClickRow)
 
+        let leftDoubleClickRow = createSettingRow()
+        let leftDoubleLabel = createLabel("Left double-click")
+        leftDoubleClickPopup = NSPopUpButton()
+        for action in ShortcutBindings.MouseAction.allCases {
+            leftDoubleClickPopup.addItem(withTitle: action.rawValue)
+        }
+        leftDoubleClickPopup.selectItem(withTitle: bindings.leftDoubleClickAction.rawValue)
+        leftDoubleClickPopup.target = self
+        leftDoubleClickPopup.action = #selector(leftDoubleClickChanged)
+        stylePopupButton(leftDoubleClickPopup)
+        leftDoubleClickRow.addArrangedSubview(leftDoubleLabel)
+        leftDoubleClickRow.addArrangedSubview(leftDoubleClickPopup)
+        stack.addArrangedSubview(leftDoubleClickRow)
+
+        let rightDoubleClickRow = createSettingRow()
+        let rightDoubleLabel = createLabel("Right double-click")
+        rightDoubleClickPopup = NSPopUpButton()
+        for action in ShortcutBindings.MouseAction.allCases {
+            rightDoubleClickPopup.addItem(withTitle: action.rawValue)
+        }
+        rightDoubleClickPopup.selectItem(withTitle: bindings.rightDoubleClickAction.rawValue)
+        rightDoubleClickPopup.target = self
+        rightDoubleClickPopup.action = #selector(rightDoubleClickChanged)
+        stylePopupButton(rightDoubleClickPopup)
+        rightDoubleClickRow.addArrangedSubview(rightDoubleLabel)
+        rightDoubleClickRow.addArrangedSubview(rightDoubleClickPopup)
+        stack.addArrangedSubview(rightDoubleClickRow)
+
         let dragLabel = NSTextField(labelWithString: "Drag to reposition window")
         dragLabel.textColor = .tertiaryLabelColor
         dragLabel.font = NSFont.systemFont(ofSize: 11)
@@ -298,13 +326,44 @@ final class SettingsWindowController: NSWindowController, NSTabViewDelegate {
         let recorder = ShortcutRecorderView()
         recorder.shortcut = shortcut
         recorder.requiresCommand = requiresCommand
+        recorder.actionName = label
         recorder.onShortcutChanged = onChange
+        recorder.isDuplicateShortcut = { [weak self] newKey in
+            self?.isShortcutDuplicate(newKey, excluding: label, requiresCommand: requiresCommand) ?? false
+        }
 
         row.addArrangedSubview(labelField)
         row.addArrangedSubview(recorder)
         stack.addArrangedSubview(row)
 
         return recorder
+    }
+
+    private func isShortcutDuplicate(_ key: String, excluding actionName: String, requiresCommand: Bool) -> Bool {
+        let bindings = Persistence.shared.shortcutBindings
+
+        // Define all shortcuts with their action names and whether they require command
+        let shortcuts: [(name: String, key: String, requiresCmd: Bool)] = [
+            ("Toggle pause/resume", bindings.togglePauseResume, false),
+            ("Copy time", bindings.copyTime, true),
+            ("Set time", bindings.openSetTime, true),
+            ("History", bindings.openHistory, true),
+            ("Settings", bindings.openSettings, true),
+            ("Quit", bindings.quit, true)
+        ]
+
+        for shortcut in shortcuts {
+            // Skip the current action being edited
+            if shortcut.name == actionName {
+                continue
+            }
+            // Only compare shortcuts with the same modifier requirements
+            if shortcut.requiresCmd == requiresCommand && shortcut.key == key {
+                return true
+            }
+        }
+
+        return false
     }
 
     private func loadShortcutBindings() {
@@ -317,6 +376,8 @@ final class SettingsWindowController: NSWindowController, NSTabViewDelegate {
         quitRecorder.shortcut = bindings.quit
         leftClickPopup.selectItem(withTitle: bindings.leftClickAction.rawValue)
         rightClickPopup.selectItem(withTitle: bindings.rightClickAction.rawValue)
+        leftDoubleClickPopup.selectItem(withTitle: bindings.leftDoubleClickAction.rawValue)
+        rightDoubleClickPopup.selectItem(withTitle: bindings.rightDoubleClickAction.rawValue)
     }
 
     @objc private func leftClickChanged() {
@@ -335,60 +396,20 @@ final class SettingsWindowController: NSWindowController, NSTabViewDelegate {
         Persistence.shared.shortcutBindings = bindings
     }
 
-    private func setupHistoryTab() {
-        let tabItem = NSTabViewItem(identifier: "history")
-        tabItem.label = "History"
+    @objc private func leftDoubleClickChanged() {
+        guard let title = leftDoubleClickPopup.titleOfSelectedItem,
+              let action = ShortcutBindings.MouseAction(rawValue: title) else { return }
+        var bindings = Persistence.shared.shortcutBindings
+        bindings.leftDoubleClickAction = action
+        Persistence.shared.shortcutBindings = bindings
+    }
 
-        let view = NSView()
-        tabItem.view = view
-
-        let stack = NSStackView()
-        stack.orientation = .vertical
-        stack.alignment = .leading
-        stack.spacing = 16
-        stack.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(stack)
-
-        NSLayoutConstraint.activate([
-            stack.topAnchor.constraint(equalTo: view.topAnchor, constant: 20),
-            stack.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
-            stack.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20)
-        ])
-
-        let maxRow = createSettingRow()
-        let maxLabel = createLabel("Maximum entries")
-        maxHistoryField = NSTextField()
-        maxHistoryField.stringValue = "20"
-        maxHistoryField.widthAnchor.constraint(equalToConstant: 60).isActive = true
-        maxHistoryField.heightAnchor.constraint(equalToConstant: 18).isActive = true
-        maxHistoryField.alignment = .center
-        maxHistoryField.target = self
-        maxHistoryField.action = #selector(maxHistoryChanged)
-        maxHistoryField.isBordered = false
-        maxHistoryField.drawsBackground = true
-        maxHistoryField.backgroundColor = NSColor.white.withAlphaComponent(0.1)
-        maxHistoryField.textColor = .labelColor
-        maxHistoryField.font = NSFont.monospacedDigitSystemFont(ofSize: 13, weight: .medium)
-        maxHistoryField.wantsLayer = true
-        maxHistoryField.layer?.cornerRadius = 6
-        maxHistoryField.focusRingType = .none
-
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .none
-        formatter.minimum = 1
-        formatter.maximum = 1000
-        maxHistoryField.formatter = formatter
-
-        maxRow.addArrangedSubview(maxLabel)
-        maxRow.addArrangedSubview(maxHistoryField)
-        stack.addArrangedSubview(maxRow)
-
-        let resetButton = createGlassButton(title: "Reset to Defaults")
-        resetButton.target = self
-        resetButton.action = #selector(resetHistory)
-        stack.addArrangedSubview(resetButton)
-
-        tabView.addTabViewItem(tabItem)
+    @objc private func rightDoubleClickChanged() {
+        guard let title = rightDoubleClickPopup.titleOfSelectedItem,
+              let action = ShortcutBindings.MouseAction(rawValue: title) else { return }
+        var bindings = Persistence.shared.shortcutBindings
+        bindings.rightDoubleClickAction = action
+        Persistence.shared.shortcutBindings = bindings
     }
 
     private func setupGeneralTab() {
@@ -464,7 +485,6 @@ final class SettingsWindowController: NSWindowController, NSTabViewDelegate {
         colorWell.color = settings.textColor
         opacitySlider.doubleValue = Double(settings.opacity * 100)
         opacityLabel.stringValue = "\(Int(settings.opacity * 100))%"
-        maxHistoryField.stringValue = "\(settings.maxHistoryEntries)"
         launchAtLoginCheckbox.state = settings.launchAtLogin ? .on : .off
     }
 
@@ -498,19 +518,6 @@ final class SettingsWindowController: NSWindowController, NSTabViewDelegate {
         delegate?.settingsDidChange()
     }
 
-    @objc private func maxHistoryChanged() {
-        var settings = Persistence.shared.appSettings
-        let newMax = Int(maxHistoryField.stringValue) ?? 20
-        settings.maxHistoryEntries = newMax
-        Persistence.shared.appSettings = settings
-
-        // Trim existing events if the new max is lower than current count
-        var events = Persistence.shared.timerEvents
-        if events.count > newMax {
-            Persistence.shared.timerEvents = Array(events.prefix(newMax))
-        }
-    }
-
     @objc private func launchAtLoginChanged() {
         var settings = Persistence.shared.appSettings
         settings.launchAtLogin = launchAtLoginCheckbox.state == .on
@@ -538,13 +545,6 @@ final class SettingsWindowController: NSWindowController, NSTabViewDelegate {
     @objc private func resetShortcuts() {
         Persistence.shared.resetShortcuts()
         loadShortcutBindings()
-    }
-
-    @objc private func resetHistory() {
-        maxHistoryField.stringValue = "20"
-        var settings = Persistence.shared.appSettings
-        settings.maxHistoryEntries = 20
-        Persistence.shared.appSettings = settings
     }
 
     override func cancelOperation(_ sender: Any?) {

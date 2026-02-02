@@ -104,13 +104,19 @@ final class TimerWindow: NSWindow {
     override func mouseUp(with event: NSEvent) {
         if didDrag {
             savePosition()
+        } else if event.clickCount == 2 {
+            ShortcutManager.shared.handleLeftDoubleClick()
         } else {
             ShortcutManager.shared.handleLeftClick()
         }
     }
 
     override func rightMouseUp(with event: NSEvent) {
-        ShortcutManager.shared.handleRightClick()
+        if event.clickCount == 2 {
+            ShortcutManager.shared.handleRightDoubleClick()
+        } else {
+            ShortcutManager.shared.handleRightClick()
+        }
     }
 
     override func keyDown(with event: NSEvent) {

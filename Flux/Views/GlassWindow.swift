@@ -10,7 +10,7 @@ final class GlassWindow: NSWindow {
 
     private func setupGlassEffect() {
         titlebarAppearsTransparent = true
-        titleVisibility = .hidden
+        titleVisibility = .visible
         isMovableByWindowBackground = true
         backgroundColor = .clear
         isOpaque = false
@@ -92,4 +92,17 @@ final class GlassWindow: NSWindow {
 
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { true }
+
+    override func keyDown(with event: NSEvent) {
+        let chars = event.charactersIgnoringModifiers ?? ""
+        let hasCommand = event.modifierFlags.contains(.command)
+
+        // Handle cmd+W to close window
+        if hasCommand && chars.lowercased() == "w" {
+            close()
+            return
+        }
+
+        super.keyDown(with: event)
+    }
 }

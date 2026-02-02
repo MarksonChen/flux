@@ -12,6 +12,8 @@ final class ShortcutRecorderView: NSView {
         }
     }
     var onShortcutChanged: ((String) -> Void)?
+    var isDuplicateShortcut: ((String) -> Bool)?
+    var actionName: String = ""
 
     private var isRecording = false
     private let textField: NSTextField
@@ -110,11 +112,31 @@ final class ShortcutRecorderView: NSView {
             return
         }
 
-        shortcut = chars.lowercased()
+        let newShortcut = chars.lowercased()
+
+        // Check for duplicates
+        if let isDuplicate = isDuplicateShortcut, isDuplicate(newShortcut) {
+            showDuplicateAlert(for: newShortcut)
+            isRecording = false
+            recordButton.title = "Record"
+            updateDisplay()
+            return
+        }
+
+        shortcut = newShortcut
         isRecording = false
         recordButton.title = "Record"
         updateDisplay()
         onShortcutChanged?(shortcut)
+    }
+
+    private func showDuplicateAlert(for key: String) {
+        let alert = NSAlert()
+        alert.messageText = "Duplicate Shortcut"
+        alert.informativeText = "The shortcut '\(formatShortcut(key))' is already assigned to another action. Please choose a different shortcut."
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "OK")
+        alert.runModal()
     }
 
     override func cancelOperation(_ sender: Any?) {

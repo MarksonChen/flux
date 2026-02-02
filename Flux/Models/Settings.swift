@@ -1,11 +1,10 @@
 import AppKit
 
 struct AppSettings: Codable {
-    var fontFamily: String = "SF Pro"
-    var fontSize: CGFloat = 36
-    var textColorHex: String = "#FFFFFF"
-    var opacity: CGFloat = 0.5
-    var maxHistoryEntries: Int = 20
+    var fontFamily: String = "Arial Black"
+    var fontSize: CGFloat = 32
+    var textColorHex: String = "#5DFFFF"
+    var opacity: CGFloat = 0.18
     var launchAtLogin: Bool = false
 
     var textColor: NSColor {
@@ -30,6 +29,8 @@ struct ShortcutBindings: Codable {
 
     var leftClickAction: MouseAction = .togglePauseResume
     var rightClickAction: MouseAction = .reset
+    var leftDoubleClickAction: MouseAction = .none
+    var rightDoubleClickAction: MouseAction = .none
 
     enum MouseAction: String, Codable, CaseIterable {
         case togglePauseResume = "Toggle Pause/Resume"
