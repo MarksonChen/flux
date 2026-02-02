@@ -70,10 +70,12 @@ final class TimerView: NSView {
 
         if let window = window {
             var frame = window.frame
-            let oldWidth = frame.width
-            frame.size = newSize
-            frame.origin.x += (oldWidth - newSize.width) / 2
-            window.setFrame(frame, display: true)
+            // Only resize if size actually changed, don't adjust position
+            // This avoids coordinate calculation issues on multi-monitor setups
+            if frame.size != newSize {
+                frame.size = newSize
+                window.setFrame(frame, display: true)
+            }
         }
 
         setFrameSize(newSize)

@@ -61,6 +61,7 @@ All state stored in UserDefaults via `Persistence.shared`:
 - `timerState`: Timer accumulated time and running state
 - `appSettings`: Appearance settings (font, fontSize, textColorHex, opacity, launchAtLogin)
 - `shortcutBindings`: Keyboard and mouse action bindings
+- `globalShortcutBindings`: Global shortcut bindings (Copy + Reset)
 - `timerEvents`: History log (max 100 entries)
 - `windowX`, `windowY`, `windowDisplayID`: Multi-monitor aware positioning
 
@@ -74,8 +75,14 @@ All state stored in UserDefaults via `Persistence.shared`:
 | Cmd+Y | Open History window |
 | Cmd+, | Open Settings window |
 | Cmd+Q | Quit |
-| Left-click | Toggle pause/resume |
+| Left-click | None |
 | Right-click | Reset to 00:00 |
+
+### Global Shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| Ctrl+Shift+T | Copy + Reset (works without app focus) |
 
 ## Default Appearance
 

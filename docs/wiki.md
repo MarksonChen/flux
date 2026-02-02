@@ -49,7 +49,8 @@ Flux/
 │   ├── SetTimeWindow.swift    # Set time dialog
 │   ├── SettingsWindow.swift   # Settings with tabs
 │   ├── HistoryWindow.swift    # Event history table
-│   └── ShortcutRecorderView.swift  # Keyboard shortcut capture widget
+│   ├── ShortcutRecorderView.swift       # Keyboard shortcut capture widget
+│   └── GlobalShortcutRecorderView.swift # Global shortcut capture widget
 └── Resources/
     └── Assets.xcassets
 ```
@@ -161,7 +162,7 @@ All dialog windows (Set Time, History, Settings) use a consistent glass design:
 
 | Action | Behavior |
 |--------|----------|
-| Left-click | Toggle pause/resume |
+| Left-click | None (configurable) |
 | Right-click | Reset to 00:00 (preserves running/paused state) |
 | Left double-click | None (configurable) |
 | Right double-click | None (configurable) |
@@ -177,6 +178,14 @@ All dialog windows (Set Time, History, Settings) use a consistent glass design:
 | `⌘Y` | Open History window |
 | `⌘,` | Open Settings window |
 | `⌘Q` | Quit application |
+
+### Default Global Shortcuts
+
+Global shortcuts work even when Flux is not focused.
+
+| Shortcut | Action |
+|----------|--------|
+| `⌃⇧T` | Copy current time + Reset to 00:00 |
 
 ### Copy Behavior (⌘C)
 
@@ -258,6 +267,11 @@ Tabbed interface with three sections: **Appearance**, **Shortcuts**, **General**
 
 Options for each: Toggle Pause/Resume, Reset, None
 
+**Global Shortcuts:**
+- Copy + Reset — Customizable global shortcut that copies time and resets (default: ⌃⇧T)
+- Enable/disable checkbox for each global shortcut
+- Works system-wide without requiring app focus
+
 **Validation:**
 - Duplicate shortcuts are detected and prevented
 - Alert shown when attempting to assign an already-used shortcut
@@ -285,6 +299,7 @@ All data stored in UserDefaults via `Persistence.shared`:
 | `timerState` | JSON | Timer accumulated time and running state |
 | `appSettings` | JSON | Appearance settings |
 | `shortcutBindings` | JSON | Keyboard and mouse bindings |
+| `globalShortcutBindings` | JSON | Global shortcut bindings |
 | `timerEvents` | JSON | Event history array (max 100) |
 | `windowX`, `windowY` | Double | Window position coordinates |
 | `windowDisplayID` | Int | Display ID for multi-monitor |
@@ -351,6 +366,7 @@ Singleton (`ShortcutManager.shared`) managing:
 - `ShortcutManagerDelegate` protocol for action callbacks
 - `handleKeyDown(_:)` — Keyboard event routing
 - `handleLeftClick()`, `handleRightClick()`, etc. — Mouse event routing
+- `startGlobalMonitoring()` — Global shortcut monitoring via `NSEvent.addGlobalMonitorForEvents`
 
 ### TimerWindow.swift
 

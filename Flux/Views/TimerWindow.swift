@@ -111,6 +111,10 @@ final class TimerWindow: NSWindow {
         }
     }
 
+    override func rightMouseDown(with event: NSEvent) {
+        // Capture right mouse down to prevent any default window behavior
+    }
+
     override func rightMouseUp(with event: NSEvent) {
         if event.clickCount == 2 {
             ShortcutManager.shared.handleRightDoubleClick()

@@ -9,6 +9,7 @@ final class Persistence {
         static let timerState = "timerState"
         static let appSettings = "appSettings"
         static let shortcutBindings = "shortcutBindings"
+        static let globalShortcutBindings = "globalShortcutBindings"
         static let timerEvents = "timerEvents"
         static let windowX = "windowX"
         static let windowY = "windowY"
@@ -64,6 +65,23 @@ final class Persistence {
         set {
             if let data = try? JSONEncoder().encode(newValue) {
                 defaults.set(data, forKey: Keys.shortcutBindings)
+            }
+        }
+    }
+
+    // MARK: - Global Shortcut Bindings
+
+    var globalShortcutBindings: GlobalShortcutBindings {
+        get {
+            guard let data = defaults.data(forKey: Keys.globalShortcutBindings),
+                  let bindings = try? JSONDecoder().decode(GlobalShortcutBindings.self, from: data) else {
+                return GlobalShortcutBindings.default
+            }
+            return bindings
+        }
+        set {
+            if let data = try? JSONEncoder().encode(newValue) {
+                defaults.set(data, forKey: Keys.globalShortcutBindings)
             }
         }
     }
@@ -127,6 +145,10 @@ final class Persistence {
 
     func resetShortcuts() {
         shortcutBindings = ShortcutBindings.default
+    }
+
+    func resetGlobalShortcuts() {
+        globalShortcutBindings = GlobalShortcutBindings.default
     }
 
     func resetHistory() {

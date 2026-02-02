@@ -6,12 +6,10 @@ Flux displays as a semi-transparent text overlay that floats above all your wind
 
 ## Features
 
-- **Always visible** — Stays on top of all windows and across all desktops
-- **Lightweight** — No dock icon, no menu bar clutter
-- **Sleep-resistant** — Keeps accurate time even when your Mac sleeps
 - **Persistent** — Remembers your time if you quit and reopen the app
-- **Customizable** — Change font, size, color, and opacity
+- **Always visible** — Stays on top of all windows and across all desktops
 - **Draggable** — Position it anywhere on your screen
+- **Customizable** — Change font, size, color, opacity, and shortcuts
 
 ## Usage
 
@@ -88,4 +86,4 @@ Or open `Flux.xcodeproj` in Xcode and press `⌘R`.
 
 ## License
 
-MIT
+Apache 2.0

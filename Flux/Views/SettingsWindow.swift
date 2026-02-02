@@ -30,6 +30,9 @@ final class SettingsWindowController: NSWindowController, NSTabViewDelegate {
     private var leftDoubleClickPopup: NSPopUpButton!
     private var rightDoubleClickPopup: NSPopUpButton!
 
+    private var copyAndResetCheckbox: NSButton!
+    private var copyAndResetRecorder: GlobalShortcutRecorderView!
+
     convenience init() {
         let window = GlassWindow(
             contentRect: NSRect(origin: .zero, size: NSSize(width: Design.WindowSize.settings.width, height: Design.WindowSize.settingsAppearance)),
@@ -259,6 +262,36 @@ final class SettingsWindowController: NSWindowController, NSTabViewDelegate {
 
         stack.addArrangedSubview(NSView()) // Spacer
 
+        let globalLabel = createSectionLabel("Global Shortcuts")
+        stack.addArrangedSubview(globalLabel)
+
+        let globalNote = NSTextField(labelWithString: "Works even when Flux is not focused")
+        globalNote.textColor = .tertiaryLabelColor
+        globalNote.font = NSFont.systemFont(ofSize: 11)
+        stack.addArrangedSubview(globalNote)
+
+        let globalBindings = Persistence.shared.globalShortcutBindings
+        let copyResetRow = createSettingRow()
+        copyAndResetCheckbox = NSButton(checkboxWithTitle: "Copy + Reset", target: self, action: #selector(copyAndResetEnabledChanged))
+        copyAndResetCheckbox.state = globalBindings.copyAndResetEnabled ? .on : .off
+        copyAndResetCheckbox.font = NSFont.systemFont(ofSize: 13)
+        copyAndResetRecorder = GlobalShortcutRecorderView()
+        copyAndResetRecorder.keyCode = globalBindings.copyAndResetKeyCode
+        copyAndResetRecorder.modifiers = globalBindings.copyAndResetModifierFlags
+        copyAndResetRecorder.onShortcutChanged = { [weak self] keyCode, modifiers in
+            var bindings = Persistence.shared.globalShortcutBindings
+            bindings.copyAndResetKeyCode = keyCode
+            bindings.copyAndResetModifiers = modifiers.rawValue
+            Persistence.shared.globalShortcutBindings = bindings
+            self?.updateCopyAndResetRecorderState()
+        }
+        copyResetRow.addArrangedSubview(copyAndResetCheckbox)
+        copyResetRow.addArrangedSubview(copyAndResetRecorder)
+        stack.addArrangedSubview(copyResetRow)
+        updateCopyAndResetRecorderState()
+
+        stack.addArrangedSubview(NSView()) // Spacer
+
         let resetButton = createGlassButton(title: "Reset to Defaults")
         resetButton.target = self
         resetButton.action = #selector(resetShortcuts)
@@ -337,6 +370,12 @@ final class SettingsWindowController: NSWindowController, NSTabViewDelegate {
         rightClickPopup.selectItem(withTitle: bindings.rightClickAction.rawValue)
         leftDoubleClickPopup.selectItem(withTitle: bindings.leftDoubleClickAction.rawValue)
         rightDoubleClickPopup.selectItem(withTitle: bindings.rightDoubleClickAction.rawValue)
+
+        let globalBindings = Persistence.shared.globalShortcutBindings
+        copyAndResetCheckbox.state = globalBindings.copyAndResetEnabled ? .on : .off
+        copyAndResetRecorder.keyCode = globalBindings.copyAndResetKeyCode
+        copyAndResetRecorder.modifiers = globalBindings.copyAndResetModifierFlags
+        updateCopyAndResetRecorderState()
     }
 
     @objc private func leftClickChanged() {
@@ -369,6 +408,17 @@ final class SettingsWindowController: NSWindowController, NSTabViewDelegate {
         var bindings = Persistence.shared.shortcutBindings
         bindings.rightDoubleClickAction = action
         Persistence.shared.shortcutBindings = bindings
+    }
+
+    @objc private func copyAndResetEnabledChanged() {
+        var bindings = Persistence.shared.globalShortcutBindings
+        bindings.copyAndResetEnabled = copyAndResetCheckbox.state == .on
+        Persistence.shared.globalShortcutBindings = bindings
+        updateCopyAndResetRecorderState()
+    }
+
+    private func updateCopyAndResetRecorderState() {
+        copyAndResetRecorder.alphaValue = copyAndResetCheckbox.state == .on ? 1.0 : 0.5
     }
 
     private func setupGeneralTab() {
@@ -503,6 +553,7 @@ final class SettingsWindowController: NSWindowController, NSTabViewDelegate {
 
     @objc private func resetShortcuts() {
         Persistence.shared.resetShortcuts()
+        Persistence.shared.resetGlobalShortcuts()
         loadShortcutBindings()
     }
 

@@ -21,6 +21,7 @@ class FluxApp: NSObject, NSApplicationDelegate {
         timerWindow.makeKeyAndOrderFront(nil)
 
         ShortcutManager.shared.delegate = self
+        ShortcutManager.shared.startGlobalMonitoring()
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -85,6 +86,11 @@ extension FluxApp: ShortcutManagerDelegate {
     }
 
     func resetTimer() {
+        TimerController.shared.reset()
+    }
+
+    func copyAndReset() {
+        TimerController.shared.copyTimeToClipboard()
         TimerController.shared.reset()
     }
 

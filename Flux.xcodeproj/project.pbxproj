@@ -25,6 +25,7 @@
 		A1000025234567890ABCDEF1 /* ShortcutRecorderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000026234567890ABCDEF1 /* ShortcutRecorderView.swift */; };
 		A1000027234567890ABCDEF1 /* GlassWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000028234567890ABCDEF1 /* GlassWindow.swift */; };
 		A100002A234567890ABCDEF1 /* DesignConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000029234567890ABCDEF1 /* DesignConstants.swift */; };
+		A100002B234567890ABCDEF1 /* GlobalShortcutRecorderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100002C234567890ABCDEF1 /* GlobalShortcutRecorderView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -48,6 +49,7 @@
 		A1000026234567890ABCDEF1 /* ShortcutRecorderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutRecorderView.swift; sourceTree = "<group>"; };
 		A1000028234567890ABCDEF1 /* GlassWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassWindow.swift; sourceTree = "<group>"; };
 		A1000029234567890ABCDEF1 /* DesignConstants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignConstants.swift; sourceTree = "<group>"; };
+		A100002C234567890ABCDEF1 /* GlobalShortcutRecorderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlobalShortcutRecorderView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -110,6 +112,7 @@
 				A1000010234567890ABCDEF1 /* HistoryWindow.swift */,
 				A1000012234567890ABCDEF1 /* SettingsWindow.swift */,
 				A1000026234567890ABCDEF1 /* ShortcutRecorderView.swift */,
+				A100002C234567890ABCDEF1 /* GlobalShortcutRecorderView.swift */,
 				A1000028234567890ABCDEF1 /* GlassWindow.swift */,
 			);
 			path = Views;
@@ -229,6 +232,7 @@
 				A1000025234567890ABCDEF1 /* ShortcutRecorderView.swift in Sources */,
 				A1000027234567890ABCDEF1 /* GlassWindow.swift in Sources */,
 				A100002A234567890ABCDEF1 /* DesignConstants.swift in Sources */,
+				A100002B234567890ABCDEF1 /* GlobalShortcutRecorderView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

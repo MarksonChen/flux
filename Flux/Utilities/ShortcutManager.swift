@@ -1,4 +1,5 @@
 import AppKit
+import ApplicationServices
 
 protocol ShortcutManagerDelegate: AnyObject {
     func togglePauseResume()
@@ -7,6 +8,7 @@ protocol ShortcutManagerDelegate: AnyObject {
     func openHistory()
     func openSettings()
     func resetTimer()
+    func copyAndReset()
     func quit()
 }
 
@@ -14,7 +16,78 @@ final class ShortcutManager {
     static let shared = ShortcutManager()
     weak var delegate: ShortcutManagerDelegate?
 
+    private var globalMonitor: Any?
+    private var accessibilityPollTimer: Timer?
+
     private init() {}
+
+    func startGlobalMonitoring() {
+        stopGlobalMonitoring()
+
+        // Check accessibility status, prompting if not granted
+        let trusted = AXIsProcessTrustedWithOptions(
+            [kAXTrustedCheckOptionPrompt.takeUnretainedValue(): true] as CFDictionary
+        )
+
+        if trusted {
+            registerGlobalMonitor()
+        } else {
+            // Poll until permission is granted
+            startAccessibilityPolling()
+        }
+    }
+
+    private func registerGlobalMonitor() {
+        globalMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            self?.handleGlobalKeyDown(event)
+        }
+    }
+
+    private func startAccessibilityPolling() {
+        accessibilityPollTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+            if AXIsProcessTrusted() {
+                self?.accessibilityPollTimer?.invalidate()
+                self?.accessibilityPollTimer = nil
+                self?.registerGlobalMonitor()
+                self?.showAccessibilityGrantedAlert()
+            }
+        }
+    }
+
+    private func showAccessibilityGrantedAlert() {
+        let alert = NSAlert()
+        alert.messageText = "Global Shortcuts Enabled"
+        alert.informativeText = "Accessibility permission granted. Global shortcuts are now active."
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: "OK")
+        alert.runModal()
+    }
+
+    func stopGlobalMonitoring() {
+        accessibilityPollTimer?.invalidate()
+        accessibilityPollTimer = nil
+
+        if let monitor = globalMonitor {
+            NSEvent.removeMonitor(monitor)
+            globalMonitor = nil
+        }
+    }
+
+    private func handleGlobalKeyDown(_ event: NSEvent) {
+        let bindings = Persistence.shared.globalShortcutBindings
+
+        guard bindings.copyAndResetEnabled else { return }
+
+        let modifierMask: NSEvent.ModifierFlags = [.control, .option, .shift, .command]
+        let pressedModifiers = event.modifierFlags.intersection(modifierMask)
+        let expectedModifiers = bindings.copyAndResetModifierFlags.intersection(modifierMask)
+
+        if event.keyCode == bindings.copyAndResetKeyCode && pressedModifiers == expectedModifiers {
+            DispatchQueue.main.async { [weak self] in
+                self?.delegate?.copyAndReset()
+            }
+        }
+    }
 
     func handleKeyDown(_ event: NSEvent) -> Bool {
         let bindings = Persistence.shared.shortcutBindings
