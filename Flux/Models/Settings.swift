@@ -39,6 +39,17 @@ struct ShortcutBindings: Codable {
     }
 
     static let `default` = ShortcutBindings()
+
+    var allKeyboardShortcuts: [(name: String, key: String, requiresCommand: Bool)] {
+        [
+            ("Toggle pause/resume", togglePauseResume, false),
+            ("Copy time", copyTime, true),
+            ("Set time", openSetTime, true),
+            ("History", openHistory, true),
+            ("Settings", openSettings, true),
+            ("Quit", quit, true)
+        ]
+    }
 }
 
 extension NSColor {

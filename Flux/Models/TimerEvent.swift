@@ -14,6 +14,12 @@ struct TimerEvent: Codable, Identifiable {
     let timeValue: TimeInterval
     let previousValue: TimeInterval?
 
+    private static let timestampFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MM/dd HH:mm:ss"
+        return formatter
+    }()
+
     init(eventType: TimerEventType, timeValue: TimeInterval, previousValue: TimeInterval? = nil) {
         self.id = UUID()
         self.timestamp = Date()
@@ -23,9 +29,7 @@ struct TimerEvent: Codable, Identifiable {
     }
 
     var formattedTimestamp: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "MM/dd HH:mm:ss"
-        return formatter.string(from: timestamp)
+        Self.timestampFormatter.string(from: timestamp)
     }
 
     var formattedChange: String {

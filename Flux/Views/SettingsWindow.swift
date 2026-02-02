@@ -32,7 +32,7 @@ final class SettingsWindowController: NSWindowController, NSTabViewDelegate {
 
     convenience init() {
         let window = GlassWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 480, height: 400),
+            contentRect: NSRect(origin: .zero, size: Design.WindowSize.settings),
             styleMask: [.titled, .closable, .fullSizeContentView],
             backing: .buffered,
             defer: false
@@ -56,9 +56,9 @@ final class SettingsWindowController: NSWindowController, NSTabViewDelegate {
 
         NSLayoutConstraint.activate([
             tabView.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 30),
-            tabView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
-            tabView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
-            tabView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -16)
+            tabView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: Design.Spacing.md),
+            tabView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -Design.Spacing.md),
+            tabView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -Design.Spacing.md)
         ])
 
         setupAppearanceTab()
@@ -76,7 +76,7 @@ final class SettingsWindowController: NSWindowController, NSTabViewDelegate {
         let stack = NSStackView()
         stack.orientation = .vertical
         stack.alignment = .leading
-        stack.spacing = 16
+        stack.spacing = Design.Spacing.md
         stack.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(stack)
 
@@ -102,9 +102,9 @@ final class SettingsWindowController: NSWindowController, NSTabViewDelegate {
         let sizeRow = createSettingRow()
         let sizeLabel = createLabel("Size")
         fontSizeSlider = NSSlider(value: 36, minValue: 12, maxValue: 120, target: self, action: #selector(fontSizeChanged))
-        fontSizeSlider.widthAnchor.constraint(equalToConstant: 180).isActive = true
+        fontSizeSlider.widthAnchor.constraint(equalToConstant: Design.Size.sliderWidth).isActive = true
         fontSizeLabel = NSTextField(labelWithString: "36pt")
-        fontSizeLabel.font = NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .regular)
+        fontSizeLabel.font = NSFont.monospacedDigitSystemFont(ofSize: Design.FontSize.sm, weight: .regular)
         fontSizeLabel.textColor = .secondaryLabelColor
         sizeRow.addArrangedSubview(sizeLabel)
         sizeRow.addArrangedSubview(fontSizeSlider)
@@ -118,8 +118,8 @@ final class SettingsWindowController: NSWindowController, NSTabViewDelegate {
         colorWell.color = .white
         colorWell.target = self
         colorWell.action = #selector(colorChanged)
-        colorWell.widthAnchor.constraint(equalToConstant: 44).isActive = true
-        colorWell.heightAnchor.constraint(equalToConstant: 24).isActive = true
+        colorWell.widthAnchor.constraint(equalToConstant: Design.Size.colorWellWidth).isActive = true
+        colorWell.heightAnchor.constraint(equalToConstant: Design.Size.colorWellHeight).isActive = true
         colorRow.addArrangedSubview(colorLabel)
         colorRow.addArrangedSubview(colorWell)
         stack.addArrangedSubview(colorRow)
@@ -128,9 +128,9 @@ final class SettingsWindowController: NSWindowController, NSTabViewDelegate {
         let opacityRow = createSettingRow()
         let opLabel = createLabel("Opacity")
         opacitySlider = NSSlider(value: 50, minValue: 0, maxValue: 100, target: self, action: #selector(opacityChanged))
-        opacitySlider.widthAnchor.constraint(equalToConstant: 180).isActive = true
+        opacitySlider.widthAnchor.constraint(equalToConstant: Design.Size.sliderWidth).isActive = true
         opacityLabel = NSTextField(labelWithString: "50%")
-        opacityLabel.font = NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .regular)
+        opacityLabel.font = NSFont.monospacedDigitSystemFont(ofSize: Design.FontSize.sm, weight: .regular)
         opacityLabel.textColor = .secondaryLabelColor
         opacityRow.addArrangedSubview(opLabel)
         opacityRow.addArrangedSubview(opacitySlider)
@@ -247,61 +247,10 @@ final class SettingsWindowController: NSWindowController, NSTabViewDelegate {
         let mouseLabel = createSectionLabel("Mouse Actions")
         stack.addArrangedSubview(mouseLabel)
 
-        let leftClickRow = createSettingRow()
-        let leftLabel = createLabel("Left-click")
-        leftClickPopup = NSPopUpButton()
-        for action in ShortcutBindings.MouseAction.allCases {
-            leftClickPopup.addItem(withTitle: action.rawValue)
-        }
-        leftClickPopup.selectItem(withTitle: bindings.leftClickAction.rawValue)
-        leftClickPopup.target = self
-        leftClickPopup.action = #selector(leftClickChanged)
-        stylePopupButton(leftClickPopup)
-        leftClickRow.addArrangedSubview(leftLabel)
-        leftClickRow.addArrangedSubview(leftClickPopup)
-        stack.addArrangedSubview(leftClickRow)
-
-        let rightClickRow = createSettingRow()
-        let rightLabel = createLabel("Right-click")
-        rightClickPopup = NSPopUpButton()
-        for action in ShortcutBindings.MouseAction.allCases {
-            rightClickPopup.addItem(withTitle: action.rawValue)
-        }
-        rightClickPopup.selectItem(withTitle: bindings.rightClickAction.rawValue)
-        rightClickPopup.target = self
-        rightClickPopup.action = #selector(rightClickChanged)
-        stylePopupButton(rightClickPopup)
-        rightClickRow.addArrangedSubview(rightLabel)
-        rightClickRow.addArrangedSubview(rightClickPopup)
-        stack.addArrangedSubview(rightClickRow)
-
-        let leftDoubleClickRow = createSettingRow()
-        let leftDoubleLabel = createLabel("Left double-click")
-        leftDoubleClickPopup = NSPopUpButton()
-        for action in ShortcutBindings.MouseAction.allCases {
-            leftDoubleClickPopup.addItem(withTitle: action.rawValue)
-        }
-        leftDoubleClickPopup.selectItem(withTitle: bindings.leftDoubleClickAction.rawValue)
-        leftDoubleClickPopup.target = self
-        leftDoubleClickPopup.action = #selector(leftDoubleClickChanged)
-        stylePopupButton(leftDoubleClickPopup)
-        leftDoubleClickRow.addArrangedSubview(leftDoubleLabel)
-        leftDoubleClickRow.addArrangedSubview(leftDoubleClickPopup)
-        stack.addArrangedSubview(leftDoubleClickRow)
-
-        let rightDoubleClickRow = createSettingRow()
-        let rightDoubleLabel = createLabel("Right double-click")
-        rightDoubleClickPopup = NSPopUpButton()
-        for action in ShortcutBindings.MouseAction.allCases {
-            rightDoubleClickPopup.addItem(withTitle: action.rawValue)
-        }
-        rightDoubleClickPopup.selectItem(withTitle: bindings.rightDoubleClickAction.rawValue)
-        rightDoubleClickPopup.target = self
-        rightDoubleClickPopup.action = #selector(rightDoubleClickChanged)
-        stylePopupButton(rightDoubleClickPopup)
-        rightDoubleClickRow.addArrangedSubview(rightDoubleLabel)
-        rightDoubleClickRow.addArrangedSubview(rightDoubleClickPopup)
-        stack.addArrangedSubview(rightDoubleClickRow)
+        leftClickPopup = createMouseActionRow(label: "Left-click", currentAction: bindings.leftClickAction, stack: stack, action: #selector(leftClickChanged))
+        rightClickPopup = createMouseActionRow(label: "Right-click", currentAction: bindings.rightClickAction, stack: stack, action: #selector(rightClickChanged))
+        leftDoubleClickPopup = createMouseActionRow(label: "Left double-click", currentAction: bindings.leftDoubleClickAction, stack: stack, action: #selector(leftDoubleClickChanged))
+        rightDoubleClickPopup = createMouseActionRow(label: "Right double-click", currentAction: bindings.rightDoubleClickAction, stack: stack, action: #selector(rightDoubleClickChanged))
 
         let dragLabel = NSTextField(labelWithString: "Drag to reposition window")
         dragLabel.textColor = .tertiaryLabelColor
@@ -339,26 +288,36 @@ final class SettingsWindowController: NSWindowController, NSTabViewDelegate {
         return recorder
     }
 
+    private func createMouseActionRow(label: String, currentAction: ShortcutBindings.MouseAction, stack: NSStackView, action: Selector) -> NSPopUpButton {
+        let row = createSettingRow()
+        let labelField = createLabel(label)
+
+        let popup = NSPopUpButton()
+        for mouseAction in ShortcutBindings.MouseAction.allCases {
+            popup.addItem(withTitle: mouseAction.rawValue)
+        }
+        popup.selectItem(withTitle: currentAction.rawValue)
+        popup.target = self
+        popup.action = action
+        stylePopupButton(popup)
+
+        row.addArrangedSubview(labelField)
+        row.addArrangedSubview(popup)
+        stack.addArrangedSubview(row)
+
+        return popup
+    }
+
     private func isShortcutDuplicate(_ key: String, excluding actionName: String, requiresCommand: Bool) -> Bool {
         let bindings = Persistence.shared.shortcutBindings
 
-        // Define all shortcuts with their action names and whether they require command
-        let shortcuts: [(name: String, key: String, requiresCmd: Bool)] = [
-            ("Toggle pause/resume", bindings.togglePauseResume, false),
-            ("Copy time", bindings.copyTime, true),
-            ("Set time", bindings.openSetTime, true),
-            ("History", bindings.openHistory, true),
-            ("Settings", bindings.openSettings, true),
-            ("Quit", bindings.quit, true)
-        ]
-
-        for shortcut in shortcuts {
+        for shortcut in bindings.allKeyboardShortcuts {
             // Skip the current action being edited
             if shortcut.name == actionName {
                 continue
             }
             // Only compare shortcuts with the same modifier requirements
-            if shortcut.requiresCmd == requiresCommand && shortcut.key == key {
+            if shortcut.requiresCommand == requiresCommand && shortcut.key == key {
                 return true
             }
         }

@@ -6,14 +6,14 @@ final class HistoryWindowController: NSWindowController, NSTableViewDataSource, 
 
     convenience init() {
         let window = GlassWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 450, height: 730),
+            contentRect: NSRect(origin: .zero, size: Design.WindowSize.history),
             styleMask: [.titled, .closable, .resizable, .fullSizeContentView],
             backing: .buffered,
             defer: false
         )
         window.title = "Event History"
         window.center()
-        window.minSize = NSSize(width: 380, height: 250)
+        window.minSize = Design.WindowSize.historyMin
 
         self.init(window: window)
         setupUI()
@@ -32,15 +32,15 @@ final class HistoryWindowController: NSWindowController, NSTableViewDataSource, 
         scrollView.drawsBackground = false
         scrollView.borderType = .noBorder
         scrollView.wantsLayer = true
-        scrollView.layer?.cornerRadius = 10
+        scrollView.layer?.cornerRadius = Design.CornerRadius.medium
         scrollView.layer?.masksToBounds = true
         contentView.addSubview(scrollView)
 
         NSLayoutConstraint.activate([
             scrollView.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 40),
-            scrollView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: 16),
-            scrollView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -16),
-            scrollView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -16)
+            scrollView.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: Design.Spacing.md),
+            scrollView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -Design.Spacing.md),
+            scrollView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -Design.Spacing.md)
         ])
 
         // Table background container for glass effect
@@ -49,7 +49,7 @@ final class HistoryWindowController: NSWindowController, NSTableViewDataSource, 
         tableContainer.blendingMode = .withinWindow
         tableContainer.state = .active
         tableContainer.wantsLayer = true
-        tableContainer.layer?.cornerRadius = 10
+        tableContainer.layer?.cornerRadius = Design.CornerRadius.medium
         tableContainer.translatesAutoresizingMaskIntoConstraints = false
 
         tableView = NSTableView()
@@ -59,8 +59,8 @@ final class HistoryWindowController: NSWindowController, NSTableViewDataSource, 
         tableView.backgroundColor = .clear
         tableView.columnAutoresizingStyle = .uniformColumnAutoresizingStyle
         tableView.style = .plain
-        tableView.rowHeight = 28
-        tableView.intercellSpacing = NSSize(width: 10, height: 4)
+        tableView.rowHeight = Design.Size.tableRowHeight
+        tableView.intercellSpacing = NSSize(width: 10, height: Design.Spacing.xs)
         tableView.headerView = nil
         tableView.gridStyleMask = []
 
@@ -111,7 +111,7 @@ final class HistoryWindowController: NSWindowController, NSTableViewDataSource, 
             cellView?.identifier = cellIdentifier
 
             let textField = NSTextField(labelWithString: "")
-            textField.font = NSFont.systemFont(ofSize: 12)
+            textField.font = NSFont.systemFont(ofSize: Design.FontSize.sm)
             textField.lineBreakMode = .byTruncatingTail
             textField.alignment = .center
             textField.translatesAutoresizingMaskIntoConstraints = false
@@ -132,11 +132,11 @@ final class HistoryWindowController: NSWindowController, NSTableViewDataSource, 
         case "change":
             cellView?.textField?.stringValue = event.formattedChange
             cellView?.textField?.textColor = .labelColor
-            cellView?.textField?.font = NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .medium)
+            cellView?.textField?.font = NSFont.monospacedDigitSystemFont(ofSize: Design.FontSize.sm, weight: .medium)
         case "event":
             cellView?.textField?.stringValue = event.eventType.rawValue
             cellView?.textField?.textColor = eventColor(for: event.eventType)
-            cellView?.textField?.font = NSFont.systemFont(ofSize: 11, weight: .medium)
+            cellView?.textField?.font = NSFont.systemFont(ofSize: Design.FontSize.xs, weight: .medium)
         default:
             cellView?.textField?.stringValue = ""
         }

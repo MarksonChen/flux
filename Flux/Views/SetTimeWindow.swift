@@ -11,7 +11,7 @@ final class SetTimeWindowController: NSWindowController {
 
     convenience init() {
         let window = GlassWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 320, height: 180),
+            contentRect: NSRect(origin: .zero, size: Design.WindowSize.setTime),
             styleMask: [.titled, .closable, .fullSizeContentView],
             backing: .buffered,
             defer: false
@@ -29,20 +29,20 @@ final class SetTimeWindowController: NSWindowController {
 
         let stackView = NSStackView()
         stackView.orientation = .vertical
-        stackView.spacing = 24
+        stackView.spacing = Design.Spacing.lg
         stackView.translatesAutoresizingMaskIntoConstraints = false
         contentView.addSubview(stackView)
 
         NSLayoutConstraint.activate([
             stackView.centerXAnchor.constraint(equalTo: contentView.centerXAnchor),
             stackView.centerYAnchor.constraint(equalTo: contentView.centerYAnchor, constant: 10),
-            stackView.leadingAnchor.constraint(greaterThanOrEqualTo: contentView.leadingAnchor, constant: 30),
-            stackView.trailingAnchor.constraint(lessThanOrEqualTo: contentView.trailingAnchor, constant: -30)
+            stackView.leadingAnchor.constraint(greaterThanOrEqualTo: contentView.leadingAnchor, constant: Design.Spacing.xl),
+            stackView.trailingAnchor.constraint(lessThanOrEqualTo: contentView.trailingAnchor, constant: -Design.Spacing.xl)
         ])
 
         let timeRow = NSStackView()
         timeRow.orientation = .horizontal
-        timeRow.spacing = 8
+        timeRow.spacing = Design.Spacing.sm
         timeRow.alignment = .centerY
 
         hoursStepper = createTimeField(maxValue: 999)
@@ -53,15 +53,10 @@ final class SetTimeWindowController: NSWindowController {
         let minutesLabel = createUnitLabel("M")
         let secondsLabel = createUnitLabel("S")
 
-        let colonLabel1 = createColonLabel()
-        let colonLabel2 = createColonLabel()
-
         timeRow.addArrangedSubview(hoursStepper)
         timeRow.addArrangedSubview(hoursLabel)
-//        timeRow.addArrangedSubview(colonLabel1)
         timeRow.addArrangedSubview(minutesStepper)
         timeRow.addArrangedSubview(minutesLabel)
-//        timeRow.addArrangedSubview(colonLabel2)
         timeRow.addArrangedSubview(secondsStepper)
         timeRow.addArrangedSubview(secondsLabel)
 
@@ -69,7 +64,7 @@ final class SetTimeWindowController: NSWindowController {
 
         let buttonRow = NSStackView()
         buttonRow.orientation = .horizontal
-        buttonRow.spacing = 12
+        buttonRow.spacing = Design.Spacing.md
 
         let cancelButton = createButton(title: "Cancel", isPrimary: false)
         cancelButton.target = self
@@ -93,11 +88,11 @@ final class SetTimeWindowController: NSWindowController {
         field.isEditable = true
         field.isBordered = false
         field.drawsBackground = true
-        field.backgroundColor = NSColor.white.withAlphaComponent(0.1)
+        field.backgroundColor = NSColor.white.withAlphaComponent(Design.Opacity.light)
         field.textColor = .labelColor
-        field.font = NSFont.monospacedDigitSystemFont(ofSize: 24, weight: .medium)
+        field.font = NSFont.monospacedDigitSystemFont(ofSize: Design.FontSize.lg, weight: .medium)
         field.wantsLayer = true
-        field.layer?.cornerRadius = 8
+        field.layer?.cornerRadius = Design.CornerRadius.small
         field.focusRingType = .none
 
         // Disable text completion to avoid ViewBridge messages
@@ -106,8 +101,8 @@ final class SetTimeWindowController: NSWindowController {
             cell.allowsEditingTextAttributes = false
         }
 
-        field.widthAnchor.constraint(equalToConstant: 40).isActive = true
-        field.heightAnchor.constraint(equalToConstant: 30).isActive = true
+        field.widthAnchor.constraint(equalToConstant: Design.Size.inputFieldWidth).isActive = true
+        field.heightAnchor.constraint(equalToConstant: Design.Size.inputFieldHeight).isActive = true
 
         let formatter = NumberFormatter()
         formatter.numberStyle = .none
@@ -121,15 +116,8 @@ final class SetTimeWindowController: NSWindowController {
 
     private func createUnitLabel(_ text: String) -> NSTextField {
         let label = NSTextField(labelWithString: text)
-        label.font = NSFont.systemFont(ofSize: 24, weight: .medium)
+        label.font = NSFont.systemFont(ofSize: Design.FontSize.lg, weight: .medium)
         label.textColor = .secondaryLabelColor
-        return label
-    }
-
-    private func createColonLabel() -> NSTextField {
-        let label = NSTextField(labelWithString: ":")
-        label.font = NSFont.systemFont(ofSize: 24, weight: .light)
-        label.textColor = .tertiaryLabelColor
         return label
     }
 
@@ -141,10 +129,10 @@ final class SetTimeWindowController: NSWindowController {
         if isPrimary {
             button.contentTintColor = .white
             button.layer?.backgroundColor = NSColor.controlAccentColor.cgColor
-            button.layer?.cornerRadius = 6
+            button.layer?.cornerRadius = Design.CornerRadius.small
         }
 
-        button.widthAnchor.constraint(equalToConstant: 100).isActive = true
+        button.widthAnchor.constraint(equalToConstant: Design.Size.buttonWidth).isActive = true
 
         return button
     }
@@ -175,9 +163,9 @@ final class SetTimeWindowController: NSWindowController {
     }
 
     @objc private func setTime() {
-        let hours = Int(hoursStepper.stringValue) ?? 0
-        let minutes = min(59, Int(minutesStepper.stringValue) ?? 0)
-        let seconds = min(59, Int(secondsStepper.stringValue) ?? 0)
+        let hours = max(0, Int(hoursStepper.stringValue) ?? 0)
+        let minutes = max(0, min(59, Int(minutesStepper.stringValue) ?? 0))
+        let seconds = max(0, min(59, Int(secondsStepper.stringValue) ?? 0))
 
         let totalSeconds = TimeInterval(hours * 3600 + minutes * 60 + seconds)
         TimerController.shared.setTime(totalSeconds)

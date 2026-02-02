@@ -22,7 +22,7 @@ final class GlassWindow: NSWindow {
         guard let contentView = contentView else { return }
 
         contentView.wantsLayer = true
-        contentView.layer?.cornerRadius = 16
+        contentView.layer?.cornerRadius = Design.CornerRadius.large
         contentView.layer?.masksToBounds = true
 
         // Base visual effect view for blur
@@ -32,7 +32,7 @@ final class GlassWindow: NSWindow {
         effectView.state = .active
         effectView.wantsLayer = true
         effectView.translatesAutoresizingMaskIntoConstraints = false
-        effectView.layer?.cornerRadius = 16
+        effectView.layer?.cornerRadius = Design.CornerRadius.large
         effectView.layer?.masksToBounds = true
 
         contentView.addSubview(effectView, positioned: .below, relativeTo: nil)
@@ -52,14 +52,14 @@ final class GlassWindow: NSWindow {
         // Create a subtle gradient overlay for the glass effect
         let gradientLayer = CAGradientLayer()
         gradientLayer.colors = [
-            NSColor.white.withAlphaComponent(0.15).cgColor,
-            NSColor.white.withAlphaComponent(0.05).cgColor,
+            NSColor.white.withAlphaComponent(Design.Opacity.medium).cgColor,
+            NSColor.white.withAlphaComponent(Design.Opacity.subtle).cgColor,
             NSColor.clear.cgColor
         ]
         gradientLayer.locations = [0, 0.3, 1]
         gradientLayer.startPoint = CGPoint(x: 0.5, y: 0)
         gradientLayer.endPoint = CGPoint(x: 0.5, y: 1)
-        gradientLayer.cornerRadius = 16
+        gradientLayer.cornerRadius = Design.CornerRadius.large
         glassOverlay.layer = gradientLayer
 
         contentView.addSubview(glassOverlay, positioned: .above, relativeTo: effectView)
@@ -75,9 +75,9 @@ final class GlassWindow: NSWindow {
         let borderView = NSView()
         borderView.wantsLayer = true
         borderView.translatesAutoresizingMaskIntoConstraints = false
-        borderView.layer?.cornerRadius = 16
+        borderView.layer?.cornerRadius = Design.CornerRadius.large
         borderView.layer?.borderWidth = 1
-        borderView.layer?.borderColor = NSColor.white.withAlphaComponent(0.3).cgColor
+        borderView.layer?.borderColor = NSColor.white.withAlphaComponent(Design.Opacity.border).cgColor
         borderView.layer?.masksToBounds = true
 
         contentView.addSubview(borderView, positioned: .above, relativeTo: glassOverlay)

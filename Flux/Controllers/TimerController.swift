@@ -1,4 +1,4 @@
-import Foundation
+import AppKit
 import Combine
 
 final class TimerController: ObservableObject {
@@ -77,5 +77,3 @@ final class TimerController: ObservableObject {
         pasteboard.setString("\(minutes)", forType: .string)
     }
 }
-
-import AppKit
