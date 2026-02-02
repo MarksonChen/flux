@@ -16,6 +16,9 @@ final class GlassWindow: NSWindow {
         isOpaque = false
         hasShadow = true
 
+        // Don't remember which desktop the window was on - appear on current space
+        collectionBehavior = [.moveToActiveSpace]
+
         guard let contentView = contentView else { return }
 
         contentView.wantsLayer = true

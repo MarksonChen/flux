@@ -102,6 +102,10 @@ final class HistoryWindowController: NSWindowController, NSTableViewDataSource, 
         tableView.reloadData()
     }
 
+    func refreshEvents() {
+        loadEvents()
+    }
+
     func numberOfRows(in tableView: NSTableView) -> Int {
         return events.count
     }

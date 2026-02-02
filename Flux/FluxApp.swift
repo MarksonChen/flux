@@ -45,6 +45,8 @@ extension FluxApp: ShortcutManagerDelegate {
         if setTimeController == nil {
             setTimeController = SetTimeWindowController()
         }
+        setTimeController?.resetToZero()
+        centerWindow(setTimeController?.window)
         setTimeController?.showWindow(nil)
         setTimeController?.window?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
@@ -54,6 +56,8 @@ extension FluxApp: ShortcutManagerDelegate {
         if historyController == nil {
             historyController = HistoryWindowController()
         }
+        historyController?.refreshEvents()
+        centerWindow(historyController?.window)
         historyController?.showWindow(nil)
         historyController?.window?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
@@ -64,9 +68,23 @@ extension FluxApp: ShortcutManagerDelegate {
             settingsController = SettingsWindowController()
             settingsController?.delegate = self
         }
+        centerWindow(settingsController?.window)
         settingsController?.showWindow(nil)
         settingsController?.window?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
+    }
+
+    private func centerWindow(_ window: NSWindow?) {
+        guard let window = window else { return }
+        let timerCenter = NSPoint(
+            x: timerWindow.frame.midX,
+            y: timerWindow.frame.midY
+        )
+        let newOrigin = NSPoint(
+            x: timerCenter.x - window.frame.width / 2,
+            y: timerCenter.y - window.frame.height / 2
+        )
+        window.setFrameOrigin(newOrigin)
     }
 
     func resetTimer() {

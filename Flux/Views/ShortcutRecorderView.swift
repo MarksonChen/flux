@@ -6,7 +6,11 @@ final class ShortcutRecorderView: NSView {
             updateDisplay()
         }
     }
-    var requiresCommand: Bool = false
+    var requiresCommand: Bool = false {
+        didSet {
+            updateDisplay()
+        }
+    }
     var onShortcutChanged: ((String) -> Void)?
 
     private var isRecording = false

@@ -184,7 +184,7 @@ final class SettingsWindowController: NSWindowController, NSTabViewDelegate {
         let stack = NSStackView()
         stack.orientation = .vertical
         stack.alignment = .leading
-        stack.spacing = 10
+        stack.spacing = 12
         stack.translatesAutoresizingMaskIntoConstraints = false
 
         let clipView = NSClipView()
@@ -193,9 +193,10 @@ final class SettingsWindowController: NSWindowController, NSTabViewDelegate {
         scrollView.contentView = clipView
 
         NSLayoutConstraint.activate([
-            stack.topAnchor.constraint(equalTo: clipView.topAnchor, constant: 15),
+            stack.topAnchor.constraint(equalTo: clipView.topAnchor, constant: 20),
             stack.leadingAnchor.constraint(equalTo: clipView.leadingAnchor, constant: 20),
             stack.trailingAnchor.constraint(equalTo: clipView.trailingAnchor, constant: -20),
+            stack.bottomAnchor.constraint(lessThanOrEqualTo: clipView.bottomAnchor, constant: -20),
             stack.widthAnchor.constraint(equalTo: scrollView.widthAnchor, constant: -40)
         ])
 
@@ -359,9 +360,18 @@ final class SettingsWindowController: NSWindowController, NSTabViewDelegate {
         maxHistoryField = NSTextField()
         maxHistoryField.stringValue = "20"
         maxHistoryField.widthAnchor.constraint(equalToConstant: 60).isActive = true
+        maxHistoryField.heightAnchor.constraint(equalToConstant: 18).isActive = true
         maxHistoryField.alignment = .center
         maxHistoryField.target = self
         maxHistoryField.action = #selector(maxHistoryChanged)
+        maxHistoryField.isBordered = false
+        maxHistoryField.drawsBackground = true
+        maxHistoryField.backgroundColor = NSColor.white.withAlphaComponent(0.1)
+        maxHistoryField.textColor = .labelColor
+        maxHistoryField.font = NSFont.monospacedDigitSystemFont(ofSize: 13, weight: .medium)
+        maxHistoryField.wantsLayer = true
+        maxHistoryField.layer?.cornerRadius = 6
+        maxHistoryField.focusRingType = .none
 
         let formatter = NumberFormatter()
         formatter.numberStyle = .none
@@ -490,8 +500,15 @@ final class SettingsWindowController: NSWindowController, NSTabViewDelegate {
 
     @objc private func maxHistoryChanged() {
         var settings = Persistence.shared.appSettings
-        settings.maxHistoryEntries = Int(maxHistoryField.stringValue) ?? 20
+        let newMax = Int(maxHistoryField.stringValue) ?? 20
+        settings.maxHistoryEntries = newMax
         Persistence.shared.appSettings = settings
+
+        // Trim existing events if the new max is lower than current count
+        var events = Persistence.shared.timerEvents
+        if events.count > newMax {
+            Persistence.shared.timerEvents = Array(events.prefix(newMax))
+        }
     }
 
     @objc private func launchAtLoginChanged() {

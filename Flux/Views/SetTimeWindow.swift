@@ -98,9 +98,10 @@ final class SetTimeWindowController: NSWindowController {
         field.font = NSFont.monospacedDigitSystemFont(ofSize: 24, weight: .medium)
         field.wantsLayer = true
         field.layer?.cornerRadius = 8
+        field.focusRingType = .none
 
-        field.widthAnchor.constraint(equalToConstant: 60).isActive = true
-        field.heightAnchor.constraint(equalToConstant: 40).isActive = true
+        field.widthAnchor.constraint(equalToConstant: 40).isActive = true
+        field.heightAnchor.constraint(equalToConstant: 30).isActive = true
 
         let formatter = NumberFormatter()
         formatter.numberStyle = .none
@@ -152,6 +153,15 @@ final class SetTimeWindowController: NSWindowController {
         hoursStepper.stringValue = String(format: "%d", hoursValue)
         minutesStepper.stringValue = String(format: "%02d", minutesValue)
         secondsStepper.stringValue = String(format: "%02d", secondsValue)
+    }
+
+    func resetToZero() {
+        hoursValue = 0
+        minutesValue = 0
+        secondsValue = 0
+        hoursStepper.stringValue = "0"
+        minutesStepper.stringValue = "00"
+        secondsStepper.stringValue = "00"
     }
 
     @objc private func cancel() {
