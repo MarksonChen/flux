@@ -5,7 +5,6 @@ struct AppSettings: Codable {
     var fontSize: CGFloat = 36
     var textColorHex: String = "#FFFFFF"
     var opacity: CGFloat = 0.5
-    var shadowEnabled: Bool = false
     var maxHistoryEntries: Int = 20
     var launchAtLogin: Bool = false
 

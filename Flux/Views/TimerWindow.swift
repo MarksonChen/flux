@@ -2,11 +2,11 @@ import AppKit
 
 final class TimerWindow: NSWindow {
     private let timerView: TimerView
-    private var isDragging = false
+    private var didDrag = false
     private var dragOffset: NSPoint = .zero
 
     init() {
-        timerView = TimerView(frame: NSRect(x: 0, y: 0, width: 150, height: 60))
+        timerView = TimerView(frame: .zero)
 
         super.init(
             contentRect: NSRect(x: 0, y: 0, width: 150, height: 60),
@@ -28,7 +28,20 @@ final class TimerWindow: NSWindow {
         collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenAuxiliary]
         isMovableByWindowBackground = false
 
-        contentView = timerView
+        timerView.translatesAutoresizingMaskIntoConstraints = false
+
+        let containerView = NSView()
+        containerView.wantsLayer = true
+        containerView.addSubview(timerView)
+
+        contentView = containerView
+
+        NSLayoutConstraint.activate([
+            timerView.topAnchor.constraint(equalTo: containerView.topAnchor),
+            timerView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor),
+            timerView.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
+            timerView.bottomAnchor.constraint(equalTo: containerView.bottomAnchor)
+        ])
 
         setAccessibilityElement(true)
         setAccessibilityRole(.staticText)
@@ -74,13 +87,12 @@ final class TimerWindow: NSWindow {
     override var canBecomeMain: Bool { true }
 
     override func mouseDown(with event: NSEvent) {
-        isDragging = true
+        didDrag = false
         dragOffset = event.locationInWindow
     }
 
     override func mouseDragged(with event: NSEvent) {
-        guard isDragging else { return }
-
+        didDrag = true
         let screenLocation = NSEvent.mouseLocation
         let newOrigin = NSPoint(
             x: screenLocation.x - dragOffset.x,
@@ -90,8 +102,7 @@ final class TimerWindow: NSWindow {
     }
 
     override func mouseUp(with event: NSEvent) {
-        if isDragging {
-            isDragging = false
+        if didDrag {
             savePosition()
         } else {
             ShortcutManager.shared.handleLeftClick()

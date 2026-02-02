@@ -53,16 +53,6 @@ final class TimerView: NSView {
         textField.font = font ?? NSFont.systemFont(ofSize: settings.fontSize)
         textField.textColor = settings.textColor.withAlphaComponent(settings.opacity)
 
-        if settings.shadowEnabled {
-            let shadow = NSShadow()
-            shadow.shadowColor = NSColor.black.withAlphaComponent(0.5)
-            shadow.shadowOffset = NSSize(width: 2, height: -2)
-            shadow.shadowBlurRadius = 4
-            textField.shadow = shadow
-        } else {
-            textField.shadow = nil
-        }
-
         textField.backgroundColor = .clear
         textField.isBordered = false
         textField.isEditable = false

@@ -22,6 +22,8 @@
 		A1000019234567890ABCDEF1 /* ShortcutManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100001A234567890ABCDEF1 /* ShortcutManager.swift */; };
 		A100001B234567890ABCDEF1 /* TimeFormatter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100001C234567890ABCDEF1 /* TimeFormatter.swift */; };
 		A100001D234567890ABCDEF1 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A100001E234567890ABCDEF1 /* Assets.xcassets */; };
+		A1000025234567890ABCDEF1 /* ShortcutRecorderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000026234567890ABCDEF1 /* ShortcutRecorderView.swift */; };
+		A1000027234567890ABCDEF1 /* GlassWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000028234567890ABCDEF1 /* GlassWindow.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -42,6 +44,8 @@
 		A100001C234567890ABCDEF1 /* TimeFormatter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimeFormatter.swift; sourceTree = "<group>"; };
 		A100001E234567890ABCDEF1 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A1000020234567890ABCDEF1 /* Flux.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Flux.entitlements; sourceTree = "<group>"; };
+		A1000026234567890ABCDEF1 /* ShortcutRecorderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutRecorderView.swift; sourceTree = "<group>"; };
+		A1000028234567890ABCDEF1 /* GlassWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassWindow.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -103,6 +107,8 @@
 				A100000E234567890ABCDEF1 /* SetTimeWindow.swift */,
 				A1000010234567890ABCDEF1 /* HistoryWindow.swift */,
 				A1000012234567890ABCDEF1 /* SettingsWindow.swift */,
+				A1000026234567890ABCDEF1 /* ShortcutRecorderView.swift */,
+				A1000028234567890ABCDEF1 /* GlassWindow.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -217,6 +223,8 @@
 				A1000017234567890ABCDEF1 /* Persistence.swift in Sources */,
 				A1000019234567890ABCDEF1 /* ShortcutManager.swift in Sources */,
 				A100001B234567890ABCDEF1 /* TimeFormatter.swift in Sources */,
+				A1000025234567890ABCDEF1 /* ShortcutRecorderView.swift in Sources */,
+				A1000027234567890ABCDEF1 /* GlassWindow.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
