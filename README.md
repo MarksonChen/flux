@@ -28,7 +28,7 @@ A semi-transparent stopwatch that floats above all your windows — perfect for 
 | Shortcut | Action |
 |----------|--------|
 | `Space` | Pause / Resume |
-| `⌘C` | Copy time (in minutes) |
+| `⌘C` | Copy time (nearest minutes) |
 | `⌘S` | Set a specific time |
 | `⌘Y` | View history |
 | `⌘,` | Open settings |
@@ -42,10 +42,6 @@ These work even when Flux is not focused:
 |----------|--------|
 | `⌃⌘T` | Toggle pause/resume |
 | `⌃⇧T` | Copy time + Reset to 00:00 |
-
-### Copy Time
-
-Press `⌘C` to copy the elapsed time as minutes to your clipboard. The time is rounded to the nearest minute (30+ seconds rounds up; `1:23:45` copies to `84`).
 
 ## Settings
 
