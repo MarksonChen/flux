@@ -22,7 +22,7 @@ create-dmg \
 ## GitHub Release
 
 ```
-gh release create v1.0.0 Flux.dmg \
-  --title "Flux v1.0.0" \
-  --notes "Initial release - drag Flux.app to Applications to install"
+gh release create v1.1.0 Flux.dmg \
+  --title "Flux v1.1.0" \
+  --notes "Initial release"
 ```
