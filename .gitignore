@@ -1,17 +1,19 @@
 # Xcode
-build/
 DerivedData/
 *.xcuserstate
 *.xcscmblueprint
 *.xccheckout
-
-# Xcode user-specific files
 xcuserdata/
 
-# Swift Package Manager
+# Swift
 .swiftpm/
 Packages/
 Package.resolved
+
+# App building
+build/
+dmg-contents/
+*.dmg
 
 # macOS
 .DS_Store
