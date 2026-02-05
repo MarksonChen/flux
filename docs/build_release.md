@@ -8,6 +8,9 @@ xcodebuild -project Flux.xcodeproj -scheme Flux -configuration Release clean bui
 
 ```
 brew install create-dmg
+rm -rf Flux.dmg
+APP_PATH=$(xcodebuild -project Flux.xcodeproj -scheme Flux -configuration Release \
+  -showBuildSettings | grep -m 1 "BUILT_PRODUCTS_DIR" | awk '{print $3}')/Flux.app
 create-dmg \
   --volname "Flux" \
   --window-pos 200 120 \
@@ -16,13 +19,12 @@ create-dmg \
   --icon "Flux.app" 150 125 \
   --app-drop-link 450 125 \
   Flux.dmg \
-  build/Release/Flux.app
+  "$APP_PATH"
 ```
 
 ## GitHub Release
 
 ```
 gh release create v1.1.0 Flux.dmg \
-  --title "Flux v1.1.0" \
-  --notes "Initial release"
+  --title "Flux v1.1.0"
 ```
