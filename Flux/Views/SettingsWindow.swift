@@ -18,6 +18,7 @@ final class SettingsWindowController: NSWindowController, NSTabViewDelegate {
     private var opacityLabel: NSTextField!
 
     private var launchAtLoginCheckbox: NSButton!
+    private var showInFullScreenCheckbox: NSButton!
 
     private var togglePauseResumeRecorder: ShortcutRecorderView!
     private var copyTimeRecorder: ShortcutRecorderView!
@@ -445,6 +446,10 @@ final class SettingsWindowController: NSWindowController, NSTabViewDelegate {
         launchAtLoginCheckbox.font = NSFont.systemFont(ofSize: 13)
         stack.addArrangedSubview(launchAtLoginCheckbox)
 
+        showInFullScreenCheckbox = NSButton(checkboxWithTitle: "Show in full screen", target: self, action: #selector(showInFullScreenChanged))
+        showInFullScreenCheckbox.font = NSFont.systemFont(ofSize: 13)
+        stack.addArrangedSubview(showInFullScreenCheckbox)
+
         tabView.addTabViewItem(tabItem)
     }
 
@@ -495,6 +500,7 @@ final class SettingsWindowController: NSWindowController, NSTabViewDelegate {
         opacitySlider.doubleValue = Double(settings.opacity * 100)
         opacityLabel.stringValue = "\(Int(settings.opacity * 100))%"
         launchAtLoginCheckbox.state = settings.launchAtLogin ? .on : .off
+        showInFullScreenCheckbox.state = settings.showInFullScreen ? .on : .off
     }
 
     @objc private func fontChanged() {
@@ -543,6 +549,13 @@ final class SettingsWindowController: NSWindowController, NSTabViewDelegate {
                 print("Failed to update login item: \(error)")
             }
         }
+    }
+
+    @objc private func showInFullScreenChanged() {
+        var settings = Persistence.shared.appSettings
+        settings.showInFullScreen = showInFullScreenCheckbox.state == .on
+        Persistence.shared.appSettings = settings
+        delegate?.settingsDidChange()
     }
 
     @objc private func resetAppearance() {

@@ -6,6 +6,7 @@ struct AppSettings: Codable {
     var textColorHex: String = "#5DFFFF"
     var opacity: CGFloat = 0.18
     var launchAtLogin: Bool = false
+    var showInFullScreen: Bool = false
 
     var textColor: NSColor {
         get {

@@ -54,7 +54,7 @@ enum Design {
         static let settings = NSSize(width: 480, height: 400)
         static let settingsAppearance: CGFloat = 280
         static let settingsShortcuts: CGFloat = 480
-        static let settingsGeneral: CGFloat = 120
+        static let settingsGeneral: CGFloat = 160
         static let timer = NSSize(width: 150, height: 60)
     }
 }

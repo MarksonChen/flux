@@ -24,17 +24,19 @@ final class ShortcutManager {
     func startGlobalMonitoring() {
         stopGlobalMonitoring()
 
-        // Check accessibility status, prompting if not granted
-        let trusted = AXIsProcessTrustedWithOptions(
+        // First check if already trusted (without prompting)
+        if AXIsProcessTrusted() {
+            registerGlobalMonitor()
+            return
+        }
+
+        // Not trusted yet - prompt the user
+        _ = AXIsProcessTrustedWithOptions(
             [kAXTrustedCheckOptionPrompt.takeUnretainedValue(): true] as CFDictionary
         )
 
-        if trusted {
-            registerGlobalMonitor()
-        } else {
-            // Poll until permission is granted
-            startAccessibilityPolling()
-        }
+        // Poll until permission is granted
+        startAccessibilityPolling()
     }
 
     private func registerGlobalMonitor() {
