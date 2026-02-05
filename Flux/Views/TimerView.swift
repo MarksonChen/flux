@@ -70,9 +70,10 @@ final class TimerView: NSView {
 
         if let window = window {
             var frame = window.frame
-            // Only resize if size actually changed, don't adjust position
-            // This avoids coordinate calculation issues on multi-monitor setups
             if frame.size != newSize {
+                // Adjust origin.y so the TOP of the window stays fixed
+                // (AppKit origin is at bottom-left, so we compensate for height change)
+                frame.origin.y += frame.size.height - newSize.height
                 frame.size = newSize
                 window.setFrame(frame, display: true)
             }

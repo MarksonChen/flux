@@ -4,7 +4,7 @@ struct AppSettings: Codable {
     var fontFamily: String = "Arial Black"
     var fontSize: CGFloat = 32
     var textColorHex: String = "#5DFFFF"
-    var opacity: CGFloat = 0.18
+    var opacity: CGFloat = 0.40
     var launchAtLogin: Bool = false
     var showInFullScreen: Bool = false
 
