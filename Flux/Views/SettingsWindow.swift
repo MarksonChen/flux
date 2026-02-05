@@ -34,6 +34,8 @@ final class SettingsWindowController: NSWindowController, NSTabViewDelegate {
 
     private var copyAndResetCheckbox: NSButton!
     private var copyAndResetRecorder: GlobalShortcutRecorderView!
+    private var toggleCheckbox: NSButton!
+    private var toggleRecorder: GlobalShortcutRecorderView!
 
     convenience init() {
         let window = GlassWindow(
@@ -293,10 +295,34 @@ final class SettingsWindowController: NSWindowController, NSTabViewDelegate {
         stack.addArrangedSubview(globalNote)
 
         let globalBindings = Persistence.shared.globalShortcutBindings
+
+        // Toggle shortcut row
+        let toggleRow = createSettingRow()
+        toggleCheckbox = NSButton(checkboxWithTitle: "Toggle", target: self, action: #selector(toggleEnabledChanged))
+        toggleCheckbox.state = globalBindings.toggleEnabled ? .on : .off
+        toggleCheckbox.font = NSFont.systemFont(ofSize: 13)
+        toggleCheckbox.widthAnchor.constraint(equalToConstant: 130).isActive = true
+        toggleRecorder = GlobalShortcutRecorderView()
+        toggleRecorder.keyCode = globalBindings.toggleKeyCode
+        toggleRecorder.modifiers = globalBindings.toggleModifierFlags
+        toggleRecorder.onShortcutChanged = { [weak self] keyCode, modifiers in
+            var bindings = Persistence.shared.globalShortcutBindings
+            bindings.toggleKeyCode = keyCode
+            bindings.toggleModifiers = modifiers.rawValue
+            Persistence.shared.globalShortcutBindings = bindings
+            self?.updateToggleRecorderState()
+        }
+        toggleRow.addArrangedSubview(toggleCheckbox)
+        toggleRow.addArrangedSubview(toggleRecorder)
+        stack.addArrangedSubview(toggleRow)
+        updateToggleRecorderState()
+
+        // Copy + Reset shortcut row
         let copyResetRow = createSettingRow()
         copyAndResetCheckbox = NSButton(checkboxWithTitle: "Copy + Reset", target: self, action: #selector(copyAndResetEnabledChanged))
         copyAndResetCheckbox.state = globalBindings.copyAndResetEnabled ? .on : .off
         copyAndResetCheckbox.font = NSFont.systemFont(ofSize: 13)
+        copyAndResetCheckbox.widthAnchor.constraint(equalToConstant: 130).isActive = true
         copyAndResetRecorder = GlobalShortcutRecorderView()
         copyAndResetRecorder.keyCode = globalBindings.copyAndResetKeyCode
         copyAndResetRecorder.modifiers = globalBindings.copyAndResetModifierFlags
@@ -394,6 +420,10 @@ final class SettingsWindowController: NSWindowController, NSTabViewDelegate {
         rightDoubleClickPopup.selectItem(withTitle: bindings.rightDoubleClickAction.rawValue)
 
         let globalBindings = Persistence.shared.globalShortcutBindings
+        toggleCheckbox.state = globalBindings.toggleEnabled ? .on : .off
+        toggleRecorder.keyCode = globalBindings.toggleKeyCode
+        toggleRecorder.modifiers = globalBindings.toggleModifierFlags
+        updateToggleRecorderState()
         copyAndResetCheckbox.state = globalBindings.copyAndResetEnabled ? .on : .off
         copyAndResetRecorder.keyCode = globalBindings.copyAndResetKeyCode
         copyAndResetRecorder.modifiers = globalBindings.copyAndResetModifierFlags
@@ -430,6 +460,17 @@ final class SettingsWindowController: NSWindowController, NSTabViewDelegate {
         var bindings = Persistence.shared.shortcutBindings
         bindings.rightDoubleClickAction = action
         Persistence.shared.shortcutBindings = bindings
+    }
+
+    @objc private func toggleEnabledChanged() {
+        var bindings = Persistence.shared.globalShortcutBindings
+        bindings.toggleEnabled = toggleCheckbox.state == .on
+        Persistence.shared.globalShortcutBindings = bindings
+        updateToggleRecorderState()
+    }
+
+    private func updateToggleRecorderState() {
+        toggleRecorder.alphaValue = toggleCheckbox.state == .on ? 1.0 : 0.5
     }
 
     @objc private func copyAndResetEnabledChanged() {

@@ -38,6 +38,7 @@ These work even when Flux is not focused:
 
 | Shortcut | Action |
 |----------|--------|
+| `⌃⌘T` | Toggle pause/resume |
 | `⌃⇧T` | Copy time + Reset to 00:00 |
 
 ### Copy Time

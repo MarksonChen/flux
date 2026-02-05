@@ -186,6 +186,7 @@ Global shortcuts work even when Flux is not focused.
 
 | Shortcut | Action |
 |----------|--------|
+| `⌃⌘T` | Toggle pause/resume |
 | `⌃⇧T` | Copy current time + Reset to 00:00 |
 
 ### Copy Behavior (⌘C)
@@ -269,6 +270,7 @@ Tabbed interface with three sections: **Appearance**, **Shortcuts**, **General**
 Options for each: Toggle Pause/Resume, Reset, None
 
 **Global Shortcuts:**
+- Toggle — Customizable global shortcut to toggle pause/resume (default: ⌃⌘T)
 - Copy + Reset — Customizable global shortcut that copies time and resets (default: ⌃⇧T)
 - Enable/disable checkbox for each global shortcut
 - Works system-wide without requiring app focus

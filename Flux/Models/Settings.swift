@@ -58,21 +58,36 @@ struct GlobalShortcutBindings: Codable, Equatable {
     var copyAndResetModifiers: UInt = NSEvent.ModifierFlags.control.rawValue | NSEvent.ModifierFlags.shift.rawValue
     var copyAndResetKeyCode: UInt16 = 17  // 't' key
 
+    var toggleEnabled: Bool = true
+    var toggleModifiers: UInt = NSEvent.ModifierFlags.control.rawValue | NSEvent.ModifierFlags.command.rawValue
+    var toggleKeyCode: UInt16 = 17  // 't' key
+
     static let `default` = GlobalShortcutBindings()
 
     var copyAndResetModifierFlags: NSEvent.ModifierFlags {
         NSEvent.ModifierFlags(rawValue: copyAndResetModifiers)
     }
 
+    var toggleModifierFlags: NSEvent.ModifierFlags {
+        NSEvent.ModifierFlags(rawValue: toggleModifiers)
+    }
+
     var copyAndResetDisplayString: String {
+        displayString(for: copyAndResetModifierFlags, keyCode: copyAndResetKeyCode)
+    }
+
+    var toggleDisplayString: String {
+        displayString(for: toggleModifierFlags, keyCode: toggleKeyCode)
+    }
+
+    private func displayString(for flags: NSEvent.ModifierFlags, keyCode: UInt16) -> String {
         var parts: [String] = []
-        let flags = copyAndResetModifierFlags
         if flags.contains(.control) { parts.append("⌃") }
         if flags.contains(.option) { parts.append("⌥") }
         if flags.contains(.shift) { parts.append("⇧") }
         if flags.contains(.command) { parts.append("⌘") }
 
-        let keyString = keyCodeToString(copyAndResetKeyCode)
+        let keyString = keyCodeToString(keyCode)
         parts.append(keyString)
         return parts.joined()
     }
