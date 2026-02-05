@@ -11,6 +11,9 @@ final class TimerWindow: NSWindow, FullScreenAXMonitorDelegate {
     private var pollTimer: DispatchSourceTimer?
     private var axMonitorActive = false
 
+    // Soft-hide state (avoids orderOut/orderFront cycle that breaks space membership)
+    private var softHiddenForFullScreen = false
+
     init() {
         timerView = TimerView(frame: .zero)
 
@@ -105,7 +108,12 @@ final class TimerWindow: NSWindow, FullScreenAXMonitorDelegate {
     private func desiredCollectionBehavior() -> NSWindow.CollectionBehavior {
         let settings = Persistence.shared.appSettings
 
-        var behavior: NSWindow.CollectionBehavior = [.canJoinAllSpaces, .stationary]
+        var behavior: NSWindow.CollectionBehavior = [
+            .canJoinAllSpaces,
+            .stationary,
+            .transient,       // Keeps overlay out of Mission Control
+            .ignoresCycle     // Keeps overlay out of Cmd+Tab cycling
+        ]
 
         // Only allow participation in fullscreen if the user explicitly wants it
         if settings.showInFullScreen {
@@ -148,6 +156,38 @@ final class TimerWindow: NSWindow, FullScreenAXMonitorDelegate {
         // Reasserting after orderOut prevents "sticky space" edge cases
         DispatchQueue.main.async { [weak self] in
             self?.applyDesiredCollectionBehavior()
+        }
+    }
+
+    /// Soft-hide for fullscreen: keeps window ordered-in but invisible.
+    /// This avoids the WindowServer space-assignment quirk where orderOut/orderFront
+    /// during a fullscreen transition causes the window to be pinned to a single space.
+    private func softHideForFullScreen() {
+        guard !softHiddenForFullScreen else { return }
+        softHiddenForFullScreen = true
+
+        // Keep the window ordered-in (no orderOut!) to preserve space membership
+        alphaValue = 0.0
+        ignoresMouseEvents = true
+    }
+
+    /// Restore visibility after fullscreen without triggering space reassignment.
+    private func softShowAfterFullScreen() {
+        guard softHiddenForFullScreen else { return }
+        softHiddenForFullScreen = false
+
+        // Reassert behavior but don't orderFront - window is already ordered in
+        applyDesiredCollectionBehavior()
+
+        ignoresMouseEvents = false
+        alphaValue = 1.0
+
+        // Only order in if something else legitimately made it not visible
+        if !isVisible {
+            orderFront(nil)
+            DispatchQueue.main.async { [weak self] in
+                self?.applyDesiredCollectionBehavior()
+            }
         }
     }
 
@@ -198,13 +238,13 @@ final class TimerWindow: NSWindow, FullScreenAXMonitorDelegate {
         guard !settings.showInFullScreen else { return }
 
         if isFullScreen {
-            hideTimerWindow()
+            softHideForFullScreen()
             startFallbackPolling()
         } else {
             // Verify with Dock heuristic before showing (avoid false positive)
             if !systemIsShowingFullScreenSpace() {
                 stopPolling()
-                showTimerWindow()
+                softShowAfterFullScreen()
             }
         }
     }
@@ -212,8 +252,8 @@ final class TimerWindow: NSWindow, FullScreenAXMonitorDelegate {
     @objc private func handleFullScreenTransition() {
         // Hide immediately when any window starts entering full screen
         let settings = Persistence.shared.appSettings
-        if !settings.showInFullScreen && isVisible {
-            hideTimerWindow()
+        if !settings.showInFullScreen && (isVisible || softHiddenForFullScreen == false) {
+            softHideForFullScreen()
             startFallbackPolling()
         }
     }
@@ -232,18 +272,23 @@ final class TimerWindow: NSWindow, FullScreenAXMonitorDelegate {
         let settings = Persistence.shared.appSettings
         if settings.showInFullScreen {
             stopPolling()
-            showTimerWindow()
+            // If we were soft-hidden, restore; otherwise use normal show
+            if softHiddenForFullScreen {
+                softShowAfterFullScreen()
+            } else {
+                showTimerWindow()
+            }
             return
         }
 
         let shouldHide = systemIsShowingFullScreenSpace()
 
         if shouldHide {
-            hideTimerWindow()
+            softHideForFullScreen()
             startFallbackPolling()
         } else {
             stopPolling()
-            showTimerWindow()
+            softShowAfterFullScreen()
         }
     }
 
@@ -319,7 +364,7 @@ final class TimerWindow: NSWindow, FullScreenAXMonitorDelegate {
 
             if !axFullScreen && !dockFullScreen {
                 self.stopPolling()
-                self.showTimerWindow()
+                self.softShowAfterFullScreen()
             }
         }
         pollTimer = timer

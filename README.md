@@ -17,7 +17,7 @@ Flux displays as a semi-transparent text overlay that floats above all your wind
 
 | Action | What it does |
 |--------|--------------|
-| **Click** | Pause / Resume |
+| **Click** | Configurable (default: none) |
 | **Right-click** | Reset to 00:00 |
 | **Drag** | Move the timer |
 
@@ -31,6 +31,14 @@ Flux displays as a semi-transparent text overlay that floats above all your wind
 | `⌘Y` | View history |
 | `⌘,` | Open settings |
 | `⌘Q` | Quit |
+
+### Global Shortcuts
+
+These work even when Flux is not focused:
+
+| Shortcut | Action |
+|----------|--------|
+| `⌃⇧T` | Copy time + Reset to 00:00 |
 
 ### Copy Time
 
@@ -53,6 +61,7 @@ Press `⌘,` to customize:
 
 **General**
 - Launch at login
+- Show in full screen (keep timer visible during fullscreen apps)
 
 ## Time Display
 

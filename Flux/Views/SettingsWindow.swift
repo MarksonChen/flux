@@ -7,6 +7,7 @@ protocol SettingsWindowDelegate: AnyObject {
 
 final class SettingsWindowController: NSWindowController, NSTabViewDelegate {
     weak var delegate: SettingsWindowDelegate?
+    private var escapeMonitor: Any?
 
     private var tabView: NSTabView!
 
@@ -47,6 +48,26 @@ final class SettingsWindowController: NSWindowController, NSTabViewDelegate {
         self.init(window: window)
         setupUI()
         loadSettings()
+        setupEscapeMonitor()
+    }
+
+    deinit {
+        if let monitor = escapeMonitor {
+            NSEvent.removeMonitor(monitor)
+        }
+    }
+
+    private func setupEscapeMonitor() {
+        escapeMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let self = self,
+                  let window = self.window,
+                  window.isKeyWindow,
+                  event.keyCode == 53 else {
+                return event
+            }
+            self.close()
+            return nil
+        }
     }
 
     private func setupUI() {

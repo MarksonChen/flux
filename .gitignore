@@ -29,3 +29,7 @@ Thumbs.db
 
 # Archives
 *.xcarchive
+
+# AI
+.claude
+CLAUDE.md

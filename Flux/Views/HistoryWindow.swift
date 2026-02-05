@@ -3,6 +3,7 @@ import AppKit
 final class HistoryWindowController: NSWindowController, NSTableViewDataSource, NSTableViewDelegate {
     private var tableView: NSTableView!
     private var events: [TimerEvent] = []
+    private var escapeMonitor: Any?
 
     convenience init() {
         let window = GlassWindow(
@@ -18,6 +19,26 @@ final class HistoryWindowController: NSWindowController, NSTableViewDataSource, 
         self.init(window: window)
         setupUI()
         loadEvents()
+        setupEscapeMonitor()
+    }
+
+    deinit {
+        if let monitor = escapeMonitor {
+            NSEvent.removeMonitor(monitor)
+        }
+    }
+
+    private func setupEscapeMonitor() {
+        escapeMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let self = self,
+                  let window = self.window,
+                  window.isKeyWindow,
+                  event.keyCode == 53 else {
+                return event
+            }
+            self.close()
+            return nil
+        }
     }
 
     private func setupUI() {

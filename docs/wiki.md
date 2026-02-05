@@ -38,10 +38,11 @@ Flux/
 │   ├── Settings.swift         # AppSettings, ShortcutBindings, MouseAction
 │   └── TimerEvent.swift       # Event log entry model
 ├── Utilities/
-│   ├── Persistence.swift      # UserDefaults wrapper (singleton)
-│   ├── ShortcutManager.swift  # Keyboard/mouse input routing (singleton)
-│   ├── TimeFormatter.swift    # Time display formatting
-│   └── DesignConstants.swift  # UI design tokens (spacing, colors, sizes)
+│   ├── Persistence.swift          # UserDefaults wrapper (singleton)
+│   ├── ShortcutManager.swift      # Keyboard/mouse input routing (singleton)
+│   ├── TimeFormatter.swift        # Time display formatting
+│   ├── FullScreenAXMonitor.swift  # Accessibility-based fullscreen detection
+│   └── DesignConstants.swift      # UI design tokens (spacing, colors, sizes)
 ├── Views/
 │   ├── TimerWindow.swift      # Main floating timer window
 │   ├── TimerView.swift        # Timer display (Combine-based reactive UI)
@@ -231,7 +232,7 @@ Displays a log of timer events.
 
 **Behavior:**
 - Newest entries at top
-- Maximum 100 entries (oldest automatically removed)
+- Maximum 20 entries (oldest automatically removed)
 - Read-only display
 - ESC key closes window
 
@@ -279,6 +280,7 @@ Options for each: Toggle Pause/Resume, Reset, None
 #### General Tab
 
 - **Launch at login** toggle — Uses SMAppService (macOS 13+)
+- **Show in full screen** toggle — Keep timer visible during fullscreen apps
 
 **Behavior:**
 - Changes apply immediately (no Save button)
@@ -300,7 +302,7 @@ All data stored in UserDefaults via `Persistence.shared`:
 | `appSettings` | JSON | Appearance settings |
 | `shortcutBindings` | JSON | Keyboard and mouse bindings |
 | `globalShortcutBindings` | JSON | Global shortcut bindings |
-| `timerEvents` | JSON | Event history array (max 100) |
+| `timerEvents` | JSON | Event history array (max 20) |
 | `windowX`, `windowY` | Double | Window position coordinates |
 | `windowDisplayID` | Int | Display ID for multi-monitor |
 
@@ -313,7 +315,8 @@ All data stored in UserDefaults via `Persistence.shared`:
 | Color | #5DFFFF (cyan) |
 | Opacity | 18% |
 | Launch at Login | Off |
-| Max History | 100 entries |
+| Show in Full Screen | Off |
+| Max History | 20 entries |
 
 ---
 
@@ -357,7 +360,7 @@ Codable struct with:
 
 Singleton (`EventLogger.shared`) managing:
 - Event creation: `logStarted(at:)`, `logPaused(at:)`, `logRestarted(from:)`, `logSet(from:to:)`
-- Maximum 100 entries with automatic cleanup
+- Maximum 20 entries with automatic cleanup
 - Persistence via `Persistence.shared.timerEvents`
 
 ### ShortcutManager.swift
@@ -390,6 +393,15 @@ Base NSWindow class providing:
 - Glassmorphism visual effect (blur, gradient, border)
 - Standard window configuration for dialogs
 - ⌘W close handling
+
+### FullScreenAXMonitor.swift
+
+Accessibility-based fullscreen detection:
+- Uses AXObserver to monitor frontmost application's windows
+- Primary detection via AXFullScreen attribute
+- Fallback to geometry-based detection comparing window to screen size
+- Throttled callbacks to prevent excessive updates
+- Used by TimerWindow to hide/show during fullscreen apps
 
 ### DesignConstants.swift
 

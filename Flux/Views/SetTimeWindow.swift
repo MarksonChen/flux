@@ -69,6 +69,7 @@ final class SetTimeWindowController: NSWindowController {
         let cancelButton = createButton(title: "Cancel", isPrimary: false)
         cancelButton.target = self
         cancelButton.action = #selector(cancel)
+        cancelButton.keyEquivalent = "\u{1B}"
 
         let setButton = createButton(title: "Set Time", isPrimary: true)
         setButton.target = self

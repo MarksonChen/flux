@@ -27,7 +27,7 @@ enum Design {
 
     // MARK: - Dimensions
     enum Size {
-        static let inputFieldHeight: CGFloat = 30
+        static let inputFieldHeight: CGFloat = 28
         static let inputFieldWidth: CGFloat = 40
         static let buttonWidth: CGFloat = 100
         static let sliderWidth: CGFloat = 180
