@@ -1,5 +1,5 @@
 # Flux
-
+ 
 A semi-transparent stopwatch that floats above all your windows — perfect for tracking daily tasks or any timed activity without getting in your way.
 
 [![Youtube Video](https://github.com/user-attachments/assets/445f9ef9-b36e-4f54-9d1e-5d836ca4b3dc)](https://www.youtube.com/watch?v=m5omA17_2zk)
