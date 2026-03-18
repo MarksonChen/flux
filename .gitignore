@@ -1,2 +1,15 @@
-flux-win/docs
-.vscode
+## IDE / Editor
+.vscode/
+.vs/
+*.user
+*.suo
+
+## .NET build output
+bin/
+obj/
+
+## Publish output
+publish/
+
+## Flux docs (generated)
+flux-win/docs/
