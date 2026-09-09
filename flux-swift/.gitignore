@@ -1,0 +1,37 @@
+# Xcode
+DerivedData/
+*.xcuserstate
+*.xcscmblueprint
+*.xccheckout
+xcuserdata/
+
+# Swift
+.swiftpm/
+Packages/
+Package.resolved
+
+# App building
+build/
+dmg-contents/
+*.dmg
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Thumbnails
+Thumbs.db
+
+# IDE
+*.swp
+*.swo
+*~
+
+# Archives
+*.xcarchive
+
+# AI
+.claude
+CLAUDE.md

@@ -1,37 +1,31 @@
-# Xcode
-DerivedData/
-*.xcuserstate
-*.xcscmblueprint
-*.xccheckout
-xcuserdata/
+## IDE / Editor
+.vscode/
+.vs/
+*.user
+*.suo
 
-# Swift
-.swiftpm/
-Packages/
-Package.resolved
+## .NET build output
+bin/
+obj/
 
-# App building
-build/
-dmg-contents/
-*.dmg
+## Publish output
+publish/
 
-# macOS
+## Flux docs (generated)
+flux-win/docs/
+## macOS
 .DS_Store
 .AppleDouble
 .LSOverride
 ._*
 
-# Thumbnails
-Thumbs.db
+## Xcode user state / build output left at the repo root
+xcuserdata/
+*.xcuserstate
+DerivedData/
+build/
+*.dmg
 
-# IDE
-*.swp
-*.swo
-*~
-
-# Archives
-*.xcarchive
-
-# AI
-.claude
+## AI assistants
+.claude/
 CLAUDE.md
