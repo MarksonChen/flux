@@ -27,6 +27,7 @@
 		A100002A234567890ABCDEF1 /* DesignConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000029234567890ABCDEF1 /* DesignConstants.swift */; };
 		A100002B234567890ABCDEF1 /* GlobalShortcutRecorderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100002C234567890ABCDEF1 /* GlobalShortcutRecorderView.swift */; };
 		A100002D234567890ABCDEF1 /* FullScreenAXMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100002E234567890ABCDEF1 /* FullScreenAXMonitor.swift */; };
+		A1000030234567890ABCDEF1 /* KeyDisplay.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100002F234567890ABCDEF1 /* KeyDisplay.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -52,6 +53,7 @@
 		A1000029234567890ABCDEF1 /* DesignConstants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignConstants.swift; sourceTree = "<group>"; };
 		A100002C234567890ABCDEF1 /* GlobalShortcutRecorderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlobalShortcutRecorderView.swift; sourceTree = "<group>"; };
 		A100002E234567890ABCDEF1 /* FullScreenAXMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FullScreenAXMonitor.swift; sourceTree = "<group>"; };
+		A100002F234567890ABCDEF1 /* KeyDisplay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyDisplay.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -137,6 +139,7 @@
 				A100001C234567890ABCDEF1 /* TimeFormatter.swift */,
 				A1000029234567890ABCDEF1 /* DesignConstants.swift */,
 				A100002E234567890ABCDEF1 /* FullScreenAXMonitor.swift */,
+				A100002F234567890ABCDEF1 /* KeyDisplay.swift */,
 			);
 			path = Utilities;
 			sourceTree = "<group>";
@@ -237,6 +240,7 @@
 				A100002A234567890ABCDEF1 /* DesignConstants.swift in Sources */,
 				A100002B234567890ABCDEF1 /* GlobalShortcutRecorderView.swift in Sources */,
 				A100002D234567890ABCDEF1 /* FullScreenAXMonitor.swift in Sources */,
+				A1000030234567890ABCDEF1 /* KeyDisplay.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -363,12 +367,11 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				CODE_SIGN_ENTITLEMENTS = Flux/Flux.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = 3MC7T3YW8G;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -379,7 +382,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.flux.stopwatch;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -391,12 +394,11 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				CODE_SIGN_ENTITLEMENTS = Flux/Flux.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = 3MC7T3YW8G;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -407,7 +409,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.flux.stopwatch;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;

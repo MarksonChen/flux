@@ -16,11 +16,22 @@ final class ShortcutManager {
     static let shared = ShortcutManager()
     weak var delegate: ShortcutManagerDelegate?
 
+    /// Posted on the main thread when Accessibility permission is granted after
+    /// launch, so components that need it (the fullscreen monitor) can start.
+    static let accessibilityPermissionGranted = Notification.Name("ShortcutManager.accessibilityPermissionGranted")
+
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
     private var accessibilityPollTimer: Timer?
 
+    /// Nesting count of active suspensions. While positive, global shortcuts pass
+    /// through untouched so the key combination being recorded in Settings is not
+    /// swallowed and acted on by the event tap.
+    private var suspensionCount = 0
+
     private init() {}
+
+    // MARK: - Global shortcuts (event tap)
 
     func startGlobalMonitoring() {
         stopGlobalMonitoring()
@@ -40,17 +51,43 @@ final class ShortcutManager {
         startAccessibilityPolling()
     }
 
+    func stopGlobalMonitoring() {
+        accessibilityPollTimer?.invalidate()
+        accessibilityPollTimer = nil
+
+        if let source = runLoopSource {
+            CFRunLoopRemoveSource(CFRunLoopGetMain(), source, .commonModes)
+            runLoopSource = nil
+        }
+
+        if let tap = eventTap {
+            CGEvent.tapEnable(tap: tap, enable: false)
+            CFMachPortInvalidate(tap)
+            eventTap = nil
+        }
+    }
+
+    func beginSuspendingGlobalShortcuts() {
+        suspensionCount += 1
+    }
+
+    func endSuspendingGlobalShortcuts() {
+        suspensionCount = max(0, suspensionCount - 1)
+    }
+
     private func registerEventTap() {
+        guard eventTap == nil else { return }
+
         // Create event tap for keyDown events
-        let eventMask = (1 << CGEventType.keyDown.rawValue)
+        let eventMask = CGEventMask(1 << CGEventType.keyDown.rawValue)
 
         guard let tap = CGEvent.tapCreate(
             tap: .cgSessionEventTap,
             place: .headInsertEventTap,
             options: .defaultTap,
-            eventsOfInterest: CGEventMask(eventMask),
-            callback: { proxy, type, event, refcon in
-                return ShortcutManager.shared.handleCGEvent(proxy: proxy, type: type, event: event)
+            eventsOfInterest: eventMask,
+            callback: { proxy, type, event, _ in
+                ShortcutManager.shared.handleCGEvent(proxy: proxy, type: type, event: event)
             },
             userInfo: nil
         ) else {
@@ -60,81 +97,76 @@ final class ShortcutManager {
 
         eventTap = tap
 
-        // Create run loop source and add to current run loop
-        runLoopSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
-        CFRunLoopAddSource(CFRunLoopGetCurrent(), runLoopSource, .commonModes)
+        let source = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
+        runLoopSource = source
+        CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)
 
-        // Enable the tap
         CGEvent.tapEnable(tap: tap, enable: true)
     }
 
     private func handleCGEvent(proxy: CGEventTapProxy, type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
-        // Handle tap disabled events (system may disable tap if it's too slow)
+        // The system disables a tap that is too slow or on certain user input; re-enable it.
         if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
             if let tap = eventTap {
                 CGEvent.tapEnable(tap: tap, enable: true)
             }
-            return Unmanaged.passRetained(event)
+            return Unmanaged.passUnretained(event)
         }
 
-        guard type == .keyDown else {
-            return Unmanaged.passRetained(event)
+        guard type == .keyDown, suspensionCount == 0 else {
+            return Unmanaged.passUnretained(event)
         }
 
         let bindings = Persistence.shared.globalShortcutBindings
-        let keyCode = UInt16(event.getIntegerValueField(.keyboardEventKeycode))
-        let flags = event.flags
+        let keyCode = UInt16(truncatingIfNeeded: event.getIntegerValueField(.keyboardEventKeycode))
+        let flags = Self.modifierFlags(from: event.flags)
+        let isRepeat = event.getIntegerValueField(.keyboardEventAutorepeat) != 0
 
-        // Convert CGEventFlags to modifier mask
-        let hasControl = flags.contains(.maskControl)
-        let hasOption = flags.contains(.maskAlternate)
-        let hasShift = flags.contains(.maskShift)
-        let hasCommand = flags.contains(.maskCommand)
-
-        // Check Copy + Reset shortcut
-        if bindings.copyAndResetEnabled {
-            let expectedFlags = bindings.copyAndResetModifierFlags
-            let matchControl = expectedFlags.contains(.control) == hasControl
-            let matchOption = expectedFlags.contains(.option) == hasOption
-            let matchShift = expectedFlags.contains(.shift) == hasShift
-            let matchCommand = expectedFlags.contains(.command) == hasCommand
-
-            if keyCode == bindings.copyAndResetKeyCode && matchControl && matchOption && matchShift && matchCommand {
-                DispatchQueue.main.async { [weak self] in
-                    self?.delegate?.copyAndReset()
-                }
-                return nil  // Consume the event
-            }
+        let action: (() -> Void)?
+        if bindings.copyAndResetEnabled,
+           keyCode == bindings.copyAndResetKeyCode,
+           flags == bindings.copyAndResetModifierFlags {
+            action = { [weak self] in self?.delegate?.copyAndReset() }
+        } else if bindings.toggleEnabled,
+                  keyCode == bindings.toggleKeyCode,
+                  flags == bindings.toggleModifierFlags {
+            action = { [weak self] in self?.delegate?.togglePauseResume() }
+        } else {
+            action = nil
         }
 
-        // Check Toggle shortcut
-        if bindings.toggleEnabled {
-            let expectedFlags = bindings.toggleModifierFlags
-            let matchControl = expectedFlags.contains(.control) == hasControl
-            let matchOption = expectedFlags.contains(.option) == hasOption
-            let matchShift = expectedFlags.contains(.shift) == hasShift
-            let matchCommand = expectedFlags.contains(.command) == hasCommand
-
-            if keyCode == bindings.toggleKeyCode && matchControl && matchOption && matchShift && matchCommand {
-                DispatchQueue.main.async { [weak self] in
-                    self?.delegate?.togglePauseResume()
-                }
-                return nil  // Consume the event
-            }
+        guard let action else {
+            // Pass through unmatched events
+            return Unmanaged.passUnretained(event)
         }
 
-        // Pass through unmatched events
-        return Unmanaged.passRetained(event)
+        // Holding the shortcut down must not fire repeatedly, but the repeats are
+        // still consumed so they do not leak into the frontmost app.
+        if !isRepeat {
+            DispatchQueue.main.async(execute: action)
+        }
+        return nil
     }
+
+    private static func modifierFlags(from cgFlags: CGEventFlags) -> NSEvent.ModifierFlags {
+        var flags: NSEvent.ModifierFlags = []
+        if cgFlags.contains(.maskControl) { flags.insert(.control) }
+        if cgFlags.contains(.maskAlternate) { flags.insert(.option) }
+        if cgFlags.contains(.maskShift) { flags.insert(.shift) }
+        if cgFlags.contains(.maskCommand) { flags.insert(.command) }
+        return flags
+    }
+
+    // MARK: - Accessibility permission
 
     private func startAccessibilityPolling() {
         accessibilityPollTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
-            if AXIsProcessTrusted() {
-                self?.accessibilityPollTimer?.invalidate()
-                self?.accessibilityPollTimer = nil
-                self?.registerEventTap()
-                self?.showAccessibilityGrantedAlert()
-            }
+            guard let self, AXIsProcessTrusted() else { return }
+            self.accessibilityPollTimer?.invalidate()
+            self.accessibilityPollTimer = nil
+            self.registerEventTap()
+            NotificationCenter.default.post(name: ShortcutManager.accessibilityPermissionGranted, object: self)
+            self.showAccessibilityGrantedAlert()
         }
     }
 
@@ -147,74 +179,83 @@ final class ShortcutManager {
         alert.runModal()
     }
 
-    func stopGlobalMonitoring() {
-        accessibilityPollTimer?.invalidate()
-        accessibilityPollTimer = nil
+    // MARK: - Local shortcuts (timer window)
 
-        if let source = runLoopSource {
-            CFRunLoopRemoveSource(CFRunLoopGetCurrent(), source, .commonModes)
-            runLoopSource = nil
-        }
-
-        if let tap = eventTap {
-            CGEvent.tapEnable(tap: tap, enable: false)
-            eventTap = nil
-        }
-    }
-
+    /// Handles a key press in the timer window. Returns true when the event
+    /// matched a binding, whether or not an action ran (key repeats are consumed
+    /// without re-triggering).
     func handleKeyDown(_ event: NSEvent) -> Bool {
-        let bindings = Persistence.shared.shortcutBindings
-        let chars = event.charactersIgnoringModifiers ?? ""
-        let hasCommand = event.modifierFlags.contains(.command)
+        guard let action = localAction(for: event) else { return false }
+        if !event.isARepeat {
+            action()
+        }
+        return true
+    }
 
-        if hasCommand {
-            switch chars.lowercased() {
+    /// True when the event matches the configured Quit shortcut. Lets dialog
+    /// windows honor the same binding as the timer window.
+    func handleQuitKeyEquivalent(_ event: NSEvent) -> Bool {
+        guard event.modifierFlags.contains(.command),
+              Self.characters(of: event) == Persistence.shared.shortcutBindings.quit else {
+            return false
+        }
+        delegate?.quit()
+        return true
+    }
+
+    private func localAction(for event: NSEvent) -> (() -> Void)? {
+        let bindings = Persistence.shared.shortcutBindings
+        let chars = Self.characters(of: event)
+        guard !chars.isEmpty else { return nil }
+
+        let modifiers = event.modifierFlags.intersection(GlobalShortcutBindings.relevantModifiers)
+
+        if modifiers.contains(.command) {
+            switch chars {
             case bindings.copyTime:
-                delegate?.copyTime()
-                return true
+                return { [weak self] in self?.delegate?.copyTime() }
             case bindings.openSetTime:
-                delegate?.openSetTime()
-                return true
+                return { [weak self] in self?.delegate?.openSetTime() }
             case bindings.openHistory:
-                delegate?.openHistory()
-                return true
+                return { [weak self] in self?.delegate?.openHistory() }
             case bindings.openSettings:
-                delegate?.openSettings()
-                return true
+                return { [weak self] in self?.delegate?.openSettings() }
             case bindings.quit:
-                delegate?.quit()
-                return true
+                return { [weak self] in self?.delegate?.quit() }
             default:
-                break
-            }
-        } else {
-            if chars == bindings.togglePauseResume {
-                delegate?.togglePauseResume()
-                return true
+                return nil
             }
         }
 
-        return false
+        // The toggle shortcut is a bare key. Ignore it when Control or Option are
+        // held so it does not shadow unrelated combinations.
+        if modifiers.isDisjoint(with: [.control, .option]), chars == bindings.togglePauseResume {
+            return { [weak self] in self?.delegate?.togglePauseResume() }
+        }
+
+        return nil
     }
+
+    private static func characters(of event: NSEvent) -> String {
+        (event.charactersIgnoringModifiers ?? "").lowercased()
+    }
+
+    // MARK: - Mouse actions
 
     func handleLeftClick() {
-        let bindings = Persistence.shared.shortcutBindings
-        performMouseAction(bindings.leftClickAction)
+        performMouseAction(Persistence.shared.shortcutBindings.leftClickAction)
     }
 
     func handleRightClick() {
-        let bindings = Persistence.shared.shortcutBindings
-        performMouseAction(bindings.rightClickAction)
+        performMouseAction(Persistence.shared.shortcutBindings.rightClickAction)
     }
 
     func handleLeftDoubleClick() {
-        let bindings = Persistence.shared.shortcutBindings
-        performMouseAction(bindings.leftDoubleClickAction)
+        performMouseAction(Persistence.shared.shortcutBindings.leftDoubleClickAction)
     }
 
     func handleRightDoubleClick() {
-        let bindings = Persistence.shared.shortcutBindings
-        performMouseAction(bindings.rightDoubleClickAction)
+        performMouseAction(Persistence.shared.shortcutBindings.rightDoubleClickAction)
     }
 
     private func performMouseAction(_ action: ShortcutBindings.MouseAction) {

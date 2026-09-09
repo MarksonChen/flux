@@ -18,6 +18,15 @@ struct AppSettings: Codable {
     }
 
     static let `default` = AppSettings()
+
+    /// A copy with only the appearance fields (font, size, color, opacity) restored to
+    /// their defaults. General settings such as launch-at-login are preserved.
+    func resettingAppearance() -> AppSettings {
+        var copy = AppSettings.default
+        copy.launchAtLogin = launchAtLogin
+        copy.showInFullScreen = showInFullScreen
+        return copy
+    }
 }
 
 struct ShortcutBindings: Codable {
@@ -64,68 +73,58 @@ struct GlobalShortcutBindings: Codable, Equatable {
 
     static let `default` = GlobalShortcutBindings()
 
+    /// Only these modifiers participate in matching; caps lock, fn and
+    /// device-specific bits are ignored.
+    static let relevantModifiers: NSEvent.ModifierFlags = [.control, .option, .shift, .command]
+
     var copyAndResetModifierFlags: NSEvent.ModifierFlags {
-        NSEvent.ModifierFlags(rawValue: copyAndResetModifiers)
+        NSEvent.ModifierFlags(rawValue: copyAndResetModifiers).intersection(Self.relevantModifiers)
     }
 
     var toggleModifierFlags: NSEvent.ModifierFlags {
-        NSEvent.ModifierFlags(rawValue: toggleModifiers)
+        NSEvent.ModifierFlags(rawValue: toggleModifiers).intersection(Self.relevantModifiers)
     }
 
     var copyAndResetDisplayString: String {
-        displayString(for: copyAndResetModifierFlags, keyCode: copyAndResetKeyCode)
+        KeyDisplay.string(keyCode: copyAndResetKeyCode, modifiers: copyAndResetModifierFlags)
     }
 
     var toggleDisplayString: String {
-        displayString(for: toggleModifierFlags, keyCode: toggleKeyCode)
-    }
-
-    private func displayString(for flags: NSEvent.ModifierFlags, keyCode: UInt16) -> String {
-        var parts: [String] = []
-        if flags.contains(.control) { parts.append("⌃") }
-        if flags.contains(.option) { parts.append("⌥") }
-        if flags.contains(.shift) { parts.append("⇧") }
-        if flags.contains(.command) { parts.append("⌘") }
-
-        let keyString = keyCodeToString(keyCode)
-        parts.append(keyString)
-        return parts.joined()
-    }
-
-    private func keyCodeToString(_ keyCode: UInt16) -> String {
-        let keyCodeMap: [UInt16: String] = [
-            0: "A", 1: "S", 2: "D", 3: "F", 4: "H", 5: "G", 6: "Z", 7: "X",
-            8: "C", 9: "V", 11: "B", 12: "Q", 13: "W", 14: "E", 15: "R",
-            16: "Y", 17: "T", 18: "1", 19: "2", 20: "3", 21: "4", 22: "6",
-            23: "5", 24: "=", 25: "9", 26: "7", 27: "-", 28: "8", 29: "0",
-            30: "]", 31: "O", 32: "U", 33: "[", 34: "I", 35: "P", 37: "L",
-            38: "J", 39: "'", 40: "K", 41: ";", 42: "\\", 43: ",", 44: "/",
-            45: "N", 46: "M", 47: ".", 50: "`", 49: "Space"
-        ]
-        return keyCodeMap[keyCode] ?? "?"
+        KeyDisplay.string(keyCode: toggleKeyCode, modifiers: toggleModifierFlags)
     }
 }
 
 extension NSColor {
+    /// Parses `#RRGGBB` (or the `#RGB` shorthand) into an sRGB color.
+    /// Returns nil for any other shape so a corrupted preference falls back cleanly.
     convenience init?(hex: String) {
         var hexSanitized = hex.trimmingCharacters(in: .whitespacesAndNewlines)
         hexSanitized = hexSanitized.replacingOccurrences(of: "#", with: "")
 
-        var rgb: UInt64 = 0
-        guard Scanner(string: hexSanitized).scanHexInt64(&rgb) else { return nil }
+        if hexSanitized.count == 3 {
+            hexSanitized = hexSanitized.map { "\($0)\($0)" }.joined()
+        }
+
+        guard hexSanitized.count == 6,
+              hexSanitized.allSatisfy({ $0.isHexDigit }),
+              let rgb = UInt64(hexSanitized, radix: 16) else {
+            return nil
+        }
 
         let r = CGFloat((rgb & 0xFF0000) >> 16) / 255.0
         let g = CGFloat((rgb & 0x00FF00) >> 8) / 255.0
         let b = CGFloat(rgb & 0x0000FF) / 255.0
 
-        self.init(red: r, green: g, blue: b, alpha: 1.0)
+        // Use sRGB explicitly so the value round-trips through `hexString`
+        // (which also reads sRGB components) without drifting.
+        self.init(srgbRed: r, green: g, blue: b, alpha: 1.0)
     }
 
     var hexString: String {
         guard let rgbColor = usingColorSpace(.sRGB) else { return "#FFFFFF" }
-        let r = Int(rgbColor.redComponent * 255)
-        let g = Int(rgbColor.greenComponent * 255)
-        let b = Int(rgbColor.blueComponent * 255)
+        let r = Int((rgbColor.redComponent * 255).rounded())
+        let g = Int((rgbColor.greenComponent * 255).rounded())
+        let b = Int((rgbColor.blueComponent * 255).rounded())
         return String(format: "#%02X%02X%02X", r, g, b)
     }
 }

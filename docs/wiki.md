@@ -13,7 +13,7 @@ Flux is a minimalist, always-visible stopwatch for macOS. It displays as a singl
 ## Features
 
 - **Always-on-top floating timer** — Visible across all desktops and spaces
-- **Sleep-resistant timing** — Accurate through system sleep using timestamp-based calculation
+- **Sleep-resistant timing** — Accurate through system sleep using timestamp-based calculation (a clock set backwards can never subtract time)
 - **Persistent state** — Timer continues across app restarts
 - **Customizable appearance** — Font, size, color, and opacity
 - **Event history** — Log of all timer events (start, pause, reset, set)
@@ -38,9 +38,10 @@ Flux/
 │   ├── Settings.swift         # AppSettings, ShortcutBindings, MouseAction
 │   └── TimerEvent.swift       # Event log entry model
 ├── Utilities/
-│   ├── Persistence.swift          # UserDefaults wrapper (singleton)
-│   ├── ShortcutManager.swift      # Keyboard/mouse input routing (singleton)
+│   ├── Persistence.swift          # UserDefaults wrapper with in-memory cache (singleton)
+│   ├── ShortcutManager.swift      # Keyboard/mouse input routing + global event tap (singleton)
 │   ├── TimeFormatter.swift        # Time display formatting
+│   ├── KeyDisplay.swift           # Key code / character → display names (⌃⌥⇧⌘T, Space, F1…)
 │   ├── FullScreenAXMonitor.swift  # Accessibility-based fullscreen detection
 │   └── DesignConstants.swift      # UI design tokens (spacing, colors, sizes)
 ├── Views/
@@ -133,7 +134,7 @@ On app launch, if timer was running when closed:
 | Font | Configurable (default: Arial Black) |
 | Size | Configurable (default: 32pt) |
 | Color | Configurable (default: #5DFFFF cyan) |
-| Opacity | Configurable (default: 18%) |
+| Opacity | Configurable (default: 40%) |
 | Background | Fully transparent |
 | Window Level | Floating above all windows |
 | Dock Icon | None (LSUIElement) |
@@ -141,7 +142,10 @@ On app launch, if timer was running when closed:
 ### Window Behavior
 
 - **Position persistence:** Remembers location across launches
-- **Multi-display support:** Remembers which monitor and clamps to screen bounds
+- **Click vs. drag:** Movement under 3pt counts as a click; when a double-click action is configured the single-click action waits for the double-click interval so both never fire
+- **Orphan mouse-ups are ignored:** A click needs both the down and the up on the timer window. Tools that intercept mouse chords (BetterTouchTool's left+right click trigger, for example) swallow the button-down and let the up through, and macOS can deliver that stray up to the timer even when the cursor is elsewhere
+- **Multi-display support:** Remembers which monitor and clamps to screen bounds; if that monitor is disconnected the window falls back to the screen containing the saved point, then the main screen
+- **Never lost:** Dragging keeps at least a sliver of the window on-screen
 - **Click-through:** Window receives direct interactions only
 - **Collection behavior:** Joins all spaces, stationary, full-screen auxiliary
 
@@ -234,6 +238,7 @@ Displays a log of timer events.
 **Behavior:**
 - Newest entries at top
 - Maximum 20 entries (oldest automatically removed)
+- Refreshes live while open
 - Read-only display
 - ESC key closes window
 
@@ -276,17 +281,19 @@ Options for each: Toggle Pause/Resume, Reset, None
 - Works system-wide without requiring app focus
 
 **Validation:**
-- Duplicate shortcuts are detected and prevented
+- Duplicate shortcuts are detected and prevented (for both local and global shortcuts)
 - Alert shown when attempting to assign an already-used shortcut
+- Escape cancels a recording; global shortcuts require ⌃, ⌥ or ⌘ (a ⇧-only combination would hijack ordinary typing)
+- The global event tap is paused while a global shortcut is being recorded, so the current shortcut can be re-recorded
 
 #### General Tab
 
-- **Launch at login** toggle — Uses SMAppService (macOS 13+)
+- **Launch at login** toggle — Uses SMAppService; the checkbox reflects the actual registration status, and a failed change is reported and reverted
 - **Show in full screen** toggle — Keep timer visible during fullscreen apps
 
 **Behavior:**
 - Changes apply immediately (no Save button)
-- Per-section "Reset to Defaults" button
+- Per-section "Reset to Defaults" button (Appearance reset leaves General settings untouched)
 - ESC key closes window
 - ⌘W closes window
 
@@ -294,7 +301,7 @@ Options for each: Toggle Pause/Resume, Reset, None
 
 ## Persistence
 
-All data stored in UserDefaults via `Persistence.shared`:
+All data stored in UserDefaults via `Persistence.shared`. Decoded values are cached in memory and written through on change, so hot paths (the global event tap sees every keystroke system-wide) never re-decode JSON:
 
 ### Stored Keys
 
@@ -315,7 +322,7 @@ All data stored in UserDefaults via `Persistence.shared`:
 | Font | Arial Black |
 | Font Size | 32pt |
 | Color | #5DFFFF (cyan) |
-| Opacity | 18% |
+| Opacity | 40% |
 | Launch at Login | Off |
 | Show in Full Screen | Off |
 | Max History | 20 entries |
@@ -347,7 +354,7 @@ Main application delegate managing:
 
 Singleton (`TimerController.shared`) managing:
 - `@Published state: TimerState` — Timer state
-- `@Published displayTime: String` — Formatted time (updated every 0.1s)
+- `@Published displayTime: String` — Formatted time (published only when the text changes; a one-shot timer fires just after each whole-second boundary while running, and nothing runs while paused)
 - Timer actions: `togglePauseResume()`, `reset()`, `setTime(_:)`, `copyTimeToClipboard()`
 - Event logging delegation to `EventLogger`
 
@@ -371,7 +378,7 @@ Singleton (`ShortcutManager.shared`) managing:
 - `ShortcutManagerDelegate` protocol for action callbacks
 - `handleKeyDown(_:)` — Keyboard event routing
 - `handleLeftClick()`, `handleRightClick()`, etc. — Mouse event routing
-- `startGlobalMonitoring()` — Global shortcut monitoring via `NSEvent.addGlobalMonitorForEvents`
+- `startGlobalMonitoring()` — Global shortcut monitoring via a `CGEvent` tap (requires Accessibility permission; matched shortcuts are consumed so they never reach the frontmost app)
 
 ### TimerWindow.swift
 
@@ -426,11 +433,11 @@ Open `Flux.xcodeproj` in Xcode and press `⌘R` to build and run.
 ### Using Command Line
 
 ```bash
-# Build
+# Build (Debug, into Xcode's DerivedData)
 xcodebuild -project Flux.xcodeproj -scheme Flux build
 
-# Build and run
-xcodebuild -project Flux.xcodeproj -scheme Flux build && open build/Release/Flux.app
+# Build a Release app into ./build and run it
+xcodebuild -project Flux.xcodeproj -scheme Flux -configuration Release build SYMROOT=build && open build/Release/Flux.app
 
 # Clean build
 xcodebuild -project Flux.xcodeproj -scheme Flux clean build

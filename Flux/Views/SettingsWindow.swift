@@ -51,9 +51,17 @@ final class SettingsWindowController: NSWindowController, NSTabViewDelegate {
         setupUI()
         loadSettings()
         setupEscapeMonitor()
+
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(windowWillClose),
+            name: NSWindow.willCloseNotification,
+            object: window
+        )
     }
 
     deinit {
+        NotificationCenter.default.removeObserver(self)
         if let monitor = escapeMonitor {
             NSEvent.removeMonitor(monitor)
         }
@@ -67,9 +75,20 @@ final class SettingsWindowController: NSWindowController, NSTabViewDelegate {
                   event.keyCode == 53 else {
                 return event
             }
+            // While a shortcut is being recorded, Escape cancels the recording
+            // (handled by the recorder) instead of closing the window.
+            if let recorder = window.firstResponder as? ShortcutRecording, recorder.isRecording {
+                return event
+            }
             self.close()
             return nil
         }
+    }
+
+    /// Drops focus so any in-progress shortcut recording is cancelled and the
+    /// global event tap is resumed before the window goes away.
+    @objc private func windowWillClose() {
+        window?.makeFirstResponder(nil)
     }
 
     private func setupUI() {
@@ -312,6 +331,10 @@ final class SettingsWindowController: NSWindowController, NSTabViewDelegate {
             Persistence.shared.globalShortcutBindings = bindings
             self?.updateToggleRecorderState()
         }
+        toggleRecorder.isDuplicateShortcut = { keyCode, modifiers in
+            let bindings = Persistence.shared.globalShortcutBindings
+            return keyCode == bindings.copyAndResetKeyCode && modifiers == bindings.copyAndResetModifierFlags
+        }
         toggleRow.addArrangedSubview(toggleCheckbox)
         toggleRow.addArrangedSubview(toggleRecorder)
         stack.addArrangedSubview(toggleRow)
@@ -332,6 +355,10 @@ final class SettingsWindowController: NSWindowController, NSTabViewDelegate {
             bindings.copyAndResetModifiers = modifiers.rawValue
             Persistence.shared.globalShortcutBindings = bindings
             self?.updateCopyAndResetRecorderState()
+        }
+        copyAndResetRecorder.isDuplicateShortcut = { keyCode, modifiers in
+            let bindings = Persistence.shared.globalShortcutBindings
+            return keyCode == bindings.toggleKeyCode && modifiers == bindings.toggleModifierFlags
         }
         copyResetRow.addArrangedSubview(copyAndResetCheckbox)
         copyResetRow.addArrangedSubview(copyAndResetRecorder)
@@ -553,7 +580,15 @@ final class SettingsWindowController: NSWindowController, NSTabViewDelegate {
     }
 
     private func loadSettings() {
-        let settings = Persistence.shared.appSettings
+        var settings = Persistence.shared.appSettings
+
+        // The login item can be removed in System Settings behind our back, so the
+        // registration status is the source of truth, not the stored flag.
+        let isLoginItemRegistered = Self.isLoginItemRegistered
+        if settings.launchAtLogin != isLoginItemRegistered {
+            settings.launchAtLogin = isLoginItemRegistered
+            Persistence.shared.appSettings = settings
+        }
 
         fontPopup.selectItem(withTitle: settings.fontFamily)
         fontSizeSlider.doubleValue = Double(settings.fontSize)
@@ -563,6 +598,15 @@ final class SettingsWindowController: NSWindowController, NSTabViewDelegate {
         opacityLabel.stringValue = "\(Int(settings.opacity * 100))%"
         launchAtLoginCheckbox.state = settings.launchAtLogin ? .on : .off
         showInFullScreenCheckbox.state = settings.showInFullScreen ? .on : .off
+    }
+
+    private static var isLoginItemRegistered: Bool {
+        switch SMAppService.mainApp.status {
+        case .enabled, .requiresApproval:
+            return true
+        default:
+            return false
+        }
     }
 
     @objc private func fontChanged() {
@@ -596,21 +640,29 @@ final class SettingsWindowController: NSWindowController, NSTabViewDelegate {
     }
 
     @objc private func launchAtLoginChanged() {
-        var settings = Persistence.shared.appSettings
-        settings.launchAtLogin = launchAtLoginCheckbox.state == .on
-        Persistence.shared.appSettings = settings
+        let enable = launchAtLoginCheckbox.state == .on
 
-        if #available(macOS 13.0, *) {
-            do {
-                if settings.launchAtLogin {
-                    try SMAppService.mainApp.register()
-                } else {
-                    try SMAppService.mainApp.unregister()
-                }
-            } catch {
-                print("Failed to update login item: \(error)")
+        do {
+            if enable {
+                try SMAppService.mainApp.register()
+            } else {
+                try SMAppService.mainApp.unregister()
             }
+        } catch {
+            // Keep the checkbox and stored flag in sync with reality.
+            launchAtLoginCheckbox.state = enable ? .off : .on
+            let alert = NSAlert()
+            alert.messageText = enable ? "Couldn't Enable Launch at Login" : "Couldn't Disable Launch at Login"
+            alert.informativeText = error.localizedDescription
+            alert.alertStyle = .warning
+            alert.addButton(withTitle: "OK")
+            alert.runModal()
+            return
         }
+
+        var settings = Persistence.shared.appSettings
+        settings.launchAtLogin = enable
+        Persistence.shared.appSettings = settings
     }
 
     @objc private func showInFullScreenChanged() {
@@ -621,7 +673,7 @@ final class SettingsWindowController: NSWindowController, NSTabViewDelegate {
     }
 
     @objc private func resetAppearance() {
-        Persistence.shared.resetSettings()
+        Persistence.shared.resetAppearance()
         loadSettings()
         delegate?.settingsDidChange()
     }
@@ -657,6 +709,7 @@ final class SettingsWindowController: NSWindowController, NSTabViewDelegate {
         let heightDiff = newHeight - frame.height
         frame.origin.y -= heightDiff
         frame.size.height = newHeight
+        frame = window.constrainFrameRect(frame, to: window.screen)
         window.setFrame(frame, display: true, animate: true)
     }
 }

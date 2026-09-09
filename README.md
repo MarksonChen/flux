@@ -82,9 +82,9 @@ To quit, press `⌘Q`.
 Requires Xcode 16+.
 
 ```bash
-git clone https://github.com/user/flux.git
+git clone https://github.com/MarksonChen/flux.git
 cd flux
-xcodebuild -project Flux.xcodeproj -scheme Flux build
+xcodebuild -project Flux.xcodeproj -scheme Flux -configuration Release build SYMROOT=build
 open build/Release/Flux.app
 ```
 

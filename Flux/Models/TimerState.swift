@@ -7,7 +7,7 @@ struct TimerState: Codable {
 
     var currentElapsed: TimeInterval {
         if isRunning {
-            return accumulated + (Date().timeIntervalSince1970 - previousTimestamp)
+            return accumulated + elapsedSincePreviousTimestamp()
         } else {
             return accumulated
         }
@@ -22,7 +22,7 @@ struct TimerState: Codable {
 
     mutating func pause() {
         if isRunning {
-            accumulated += Date().timeIntervalSince1970 - previousTimestamp
+            accumulated += elapsedSincePreviousTimestamp()
             previousTimestamp = Date().timeIntervalSince1970
             isRunning = false
         }
@@ -42,15 +42,24 @@ struct TimerState: Codable {
     }
 
     mutating func setTime(_ seconds: TimeInterval) {
-        accumulated = seconds
+        accumulated = max(0, seconds)
         previousTimestamp = Date().timeIntervalSince1970
     }
 
     mutating func resumeFromPersistence() {
         if isRunning {
-            let now = Date().timeIntervalSince1970
-            accumulated += now - previousTimestamp
-            previousTimestamp = now
+            accumulated += elapsedSincePreviousTimestamp()
+            previousTimestamp = Date().timeIntervalSince1970
         }
+    }
+
+    /// Wall-clock time since `previousTimestamp`, never negative.
+    ///
+    /// The timer is wall-clock based so it keeps counting through sleep and app
+    /// restarts. The cost is that a clock adjustment backwards (NTP sync, manual
+    /// change, time zone edge cases) would otherwise produce a negative delta and
+    /// silently subtract from the accumulated time.
+    private func elapsedSincePreviousTimestamp() -> TimeInterval {
+        max(0, Date().timeIntervalSince1970 - previousTimestamp)
     }
 }

@@ -5,10 +5,6 @@ final class SetTimeWindowController: NSWindowController {
     private var minutesStepper: NSTextField!
     private var secondsStepper: NSTextField!
 
-    private var hoursValue: Int = 0
-    private var minutesValue: Int = 0
-    private var secondsValue: Int = 0
-
     convenience init() {
         let window = GlassWindow(
             contentRect: NSRect(origin: .zero, size: Design.WindowSize.setTime),
@@ -21,7 +17,7 @@ final class SetTimeWindowController: NSWindowController {
 
         self.init(window: window)
         setupUI()
-        loadCurrentTime()
+        resetToZero()
     }
 
     private func setupUI() {
@@ -145,22 +141,7 @@ final class SetTimeWindowController: NSWindowController {
         return button
     }
 
-    private func loadCurrentTime() {
-        let elapsed = TimerController.shared.currentElapsed
-        let totalSeconds = Int(elapsed)
-        hoursValue = totalSeconds / 3600
-        minutesValue = (totalSeconds % 3600) / 60
-        secondsValue = totalSeconds % 60
-
-        hoursStepper.stringValue = String(format: "%d", hoursValue)
-        minutesStepper.stringValue = String(format: "%02d", minutesValue)
-        secondsStepper.stringValue = String(format: "%02d", secondsValue)
-    }
-
     func resetToZero() {
-        hoursValue = 0
-        minutesValue = 0
-        secondsValue = 0
         hoursStepper.stringValue = "0"
         minutesStepper.stringValue = "00"
         secondsStepper.stringValue = "00"
@@ -176,6 +157,9 @@ final class SetTimeWindowController: NSWindowController {
     }
 
     @objc private func setTime() {
+        // Commit any in-progress edit so the field values reflect what was typed.
+        window?.makeFirstResponder(nil)
+
         let hours = max(0, Int(hoursStepper.stringValue) ?? 0)
         let minutes = max(0, min(59, Int(minutesStepper.stringValue) ?? 0))
         let seconds = max(0, min(59, Int(secondsStepper.stringValue) ?? 0))

@@ -20,12 +20,26 @@ final class HistoryWindowController: NSWindowController, NSTableViewDataSource, 
         setupUI()
         loadEvents()
         setupEscapeMonitor()
+
+        // Keep the table current while open (e.g. a global shortcut toggles the timer).
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(eventsDidChange),
+            name: Persistence.timerEventsDidChange,
+            object: nil
+        )
     }
 
     deinit {
+        NotificationCenter.default.removeObserver(self)
         if let monitor = escapeMonitor {
             NSEvent.removeMonitor(monitor)
         }
+    }
+
+    @objc private func eventsDidChange() {
+        guard window?.isVisible == true else { return }
+        loadEvents()
     }
 
     private func setupEscapeMonitor() {
@@ -63,15 +77,6 @@ final class HistoryWindowController: NSWindowController, NSTableViewDataSource, 
             scrollView.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -Design.Spacing.md),
             scrollView.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -Design.Spacing.md)
         ])
-
-        // Table background container for glass effect
-        let tableContainer = NSVisualEffectView()
-        tableContainer.material = .sidebar
-        tableContainer.blendingMode = .withinWindow
-        tableContainer.state = .active
-        tableContainer.wantsLayer = true
-        tableContainer.layer?.cornerRadius = Design.CornerRadius.medium
-        tableContainer.translatesAutoresizingMaskIntoConstraints = false
 
         tableView = NSTableView()
         tableView.dataSource = self

@@ -1,6 +1,13 @@
 import AppKit
 
-final class ShortcutRecorderView: NSView {
+/// Adopted by the shortcut recorder widgets so windows can tell when a key
+/// press should be delivered to the recorder instead of being interpreted as a
+/// key equivalent (⌘W, Escape, the Quit shortcut).
+protocol ShortcutRecording: AnyObject {
+    var isRecording: Bool { get }
+}
+
+final class ShortcutRecorderView: NSView, ShortcutRecording {
     var shortcut: String = "" {
         didSet {
             updateDisplay()
@@ -15,7 +22,13 @@ final class ShortcutRecorderView: NSView {
     var isDuplicateShortcut: ((String) -> Bool)?
     var actionName: String = ""
 
-    private var isRecording = false
+    private(set) var isRecording = false {
+        didSet {
+            recordButton.title = isRecording ? "Cancel" : "Record"
+            updateDisplay()
+        }
+    }
+
     private let textField: NSTextField
     private let recordButton: NSButton
 
@@ -46,7 +59,7 @@ final class ShortcutRecorderView: NSView {
     private func setupView() {
         let stack = NSStackView(views: [textField, recordButton])
         stack.orientation = .horizontal
-        stack.spacing = 8
+        stack.spacing = Design.Spacing.sm
         stack.translatesAutoresizingMaskIntoConstraints = false
         addSubview(stack)
 
@@ -57,7 +70,7 @@ final class ShortcutRecorderView: NSView {
             stack.bottomAnchor.constraint(equalTo: bottomAnchor)
         ])
 
-        textField.widthAnchor.constraint(greaterThanOrEqualToConstant: 80).isActive = true
+        textField.widthAnchor.constraint(greaterThanOrEqualToConstant: Design.Size.shortcutFieldMinWidth).isActive = true
         textField.alignment = .center
         textField.isBordered = true
         textField.isEditable = false
@@ -77,27 +90,38 @@ final class ShortcutRecorderView: NSView {
     }
 
     private func formatShortcut(_ key: String) -> String {
-        if key == " " {
-            return requiresCommand ? "⌘Space" : "Space"
-        }
-        if requiresCommand {
-            return "⌘\(key.uppercased())"
-        }
-        return key.uppercased()
+        KeyDisplay.string(character: key, requiresCommand: requiresCommand)
     }
 
+    // MARK: - Recording
+
     @objc private func toggleRecording() {
-        isRecording.toggle()
         if isRecording {
-            recordButton.title = "Cancel"
-            window?.makeFirstResponder(self)
+            stopRecording()
         } else {
-            recordButton.title = "Record"
+            startRecording()
         }
-        updateDisplay()
+    }
+
+    private func startRecording() {
+        isRecording = true
+        window?.makeFirstResponder(self)
+    }
+
+    private func stopRecording() {
+        isRecording = false
     }
 
     override var acceptsFirstResponder: Bool { true }
+
+    /// Losing focus (another recorder started, the window closed) cancels the recording
+    /// so two widgets never both show "Press key...".
+    override func resignFirstResponder() -> Bool {
+        if isRecording {
+            stopRecording()
+        }
+        return super.resignFirstResponder()
+    }
 
     override func keyDown(with event: NSEvent) {
         guard isRecording else {
@@ -105,29 +129,28 @@ final class ShortcutRecorderView: NSView {
             return
         }
 
-        let chars = event.charactersIgnoringModifiers ?? ""
+        // Escape cancels rather than becoming the shortcut.
+        if event.keyCode == 53 {
+            stopRecording()
+            return
+        }
+
+        let chars = (event.charactersIgnoringModifiers ?? "").lowercased()
         guard !chars.isEmpty else { return }
 
         if requiresCommand && !event.modifierFlags.contains(.command) {
             return
         }
 
-        let newShortcut = chars.lowercased()
-
-        // Check for duplicates
-        if let isDuplicate = isDuplicateShortcut, isDuplicate(newShortcut) {
-            showDuplicateAlert(for: newShortcut)
-            isRecording = false
-            recordButton.title = "Record"
-            updateDisplay()
+        if isDuplicateShortcut?(chars) == true {
+            stopRecording()
+            showDuplicateAlert(for: chars)
             return
         }
 
-        shortcut = newShortcut
-        isRecording = false
-        recordButton.title = "Record"
-        updateDisplay()
-        onShortcutChanged?(shortcut)
+        stopRecording()
+        shortcut = chars
+        onShortcutChanged?(chars)
     }
 
     private func showDuplicateAlert(for key: String) {
@@ -141,9 +164,7 @@ final class ShortcutRecorderView: NSView {
 
     override func cancelOperation(_ sender: Any?) {
         if isRecording {
-            isRecording = false
-            recordButton.title = "Record"
-            updateDisplay()
+            stopRecording()
         }
     }
 }

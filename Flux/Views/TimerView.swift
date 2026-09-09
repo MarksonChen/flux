@@ -2,6 +2,8 @@ import AppKit
 import Combine
 
 final class TimerView: NSView {
+    private static let padding: CGFloat = 20
+
     private let textField: NSTextField
     private var cancellables = Set<AnyCancellable>()
     private let timerController = TimerController.shared
@@ -44,13 +46,7 @@ final class TimerView: NSView {
     func applySettings() {
         let settings = Persistence.shared.appSettings
 
-        var font: NSFont?
-        if settings.fontFamily == "SF Pro" {
-            font = NSFont.systemFont(ofSize: settings.fontSize, weight: .regular)
-        } else {
-            font = NSFont(name: settings.fontFamily, size: settings.fontSize)
-        }
-        textField.font = font ?? NSFont.systemFont(ofSize: settings.fontSize)
+        textField.font = Self.resolveFont(family: settings.fontFamily, size: settings.fontSize)
         textField.textColor = settings.textColor.withAlphaComponent(settings.opacity)
 
         textField.backgroundColor = .clear
@@ -62,11 +58,27 @@ final class TimerView: NSView {
         updateSize()
     }
 
+    /// The font popup lists font *families*, but `NSFont(name:)` looks up a face
+    /// name. Families whose regular face is named differently (e.g. "Avenir Next"
+    /// → "AvenirNext-Regular") would otherwise silently fall back to the system
+    /// font, so resolve by family through the font manager as well.
+    private static func resolveFont(family: String, size: CGFloat) -> NSFont {
+        if family == "SF Pro" {
+            return NSFont.systemFont(ofSize: size, weight: .regular)
+        }
+        if let byName = NSFont(name: family, size: size) {
+            return byName
+        }
+        if let byFamily = NSFontManager.shared.font(withFamily: family, traits: [], weight: 5, size: size) {
+            return byFamily
+        }
+        return NSFont.systemFont(ofSize: size)
+    }
+
     private func updateSize() {
         textField.sizeToFit()
         let textSize = textField.frame.size
-        let padding: CGFloat = 20
-        let newSize = NSSize(width: textSize.width + padding, height: textSize.height + padding)
+        let newSize = NSSize(width: textSize.width + Self.padding, height: textSize.height + Self.padding)
 
         if let window = window {
             var frame = window.frame
@@ -84,7 +96,6 @@ final class TimerView: NSView {
 
     override var intrinsicContentSize: NSSize {
         let textSize = textField.intrinsicContentSize
-        let padding: CGFloat = 20
-        return NSSize(width: textSize.width + padding, height: textSize.height + padding)
+        return NSSize(width: textSize.width + Self.padding, height: textSize.height + Self.padding)
     }
 }

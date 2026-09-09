@@ -24,13 +24,16 @@ final class FullScreenAXMonitor {
 
     // Cached state
     private(set) var lastKnownState: Bool = false
+    private var isMonitoring = false
 
     private init() {}
 
     // MARK: - Public API
 
+    /// Idempotent: safe to call again once Accessibility is granted after launch.
     func startMonitoring() {
-        guard AXIsProcessTrusted() else { return }
+        guard !isMonitoring, AXIsProcessTrusted() else { return }
+        isMonitoring = true
 
         NSWorkspace.shared.notificationCenter.addObserver(
             self,
@@ -43,6 +46,8 @@ final class FullScreenAXMonitor {
     }
 
     func stopMonitoring() {
+        guard isMonitoring else { return }
+        isMonitoring = false
         NSWorkspace.shared.notificationCenter.removeObserver(
             self,
             name: NSWorkspace.didActivateApplicationNotification,
@@ -216,21 +221,38 @@ final class FullScreenAXMonitor {
         return checkWindowGeometry(winEl)
     }
 
+    /// Accessibility reports window geometry in Quartz coordinates (origin at the
+    /// top-left of the primary display, y growing downward) while `NSScreen`
+    /// frames use Cocoa coordinates (origin bottom-left, y growing upward). Each
+    /// screen is converted before comparing, and every screen is considered
+    /// rather than only `NSScreen.main`, which is the screen holding *our* key
+    /// window and not necessarily the one the frontmost app is on.
     private func checkWindowGeometry(_ window: AXUIElement) -> Bool {
-        guard let screen = NSScreen.main else { return false }
-
         guard let size = axCGSize(window, kAXSizeAttribute as CFString),
               let pos = axCGPoint(window, kAXPositionAttribute as CFString) else {
             return false
         }
 
-        let sf = screen.frame
+        let windowRect = CGRect(origin: pos, size: size)
         let tolerance: CGFloat = 10
 
-        let nearFullSize = abs(size.width - sf.width) < tolerance && abs(size.height - sf.height) < tolerance
-        let nearOrigin = abs(pos.x - sf.minX) < tolerance && abs(pos.y - sf.minY) < tolerance
+        return NSScreen.screens.contains { screen in
+            let sf = Self.quartzRect(for: screen)
+            let nearFullSize = abs(windowRect.width - sf.width) < tolerance && abs(windowRect.height - sf.height) < tolerance
+            let nearOrigin = abs(windowRect.minX - sf.minX) < tolerance && abs(windowRect.minY - sf.minY) < tolerance
+            return nearFullSize && nearOrigin
+        }
+    }
 
-        return nearFullSize && nearOrigin
+    private static func quartzRect(for screen: NSScreen) -> CGRect {
+        guard let primary = NSScreen.screens.first else { return screen.frame }
+        let frame = screen.frame
+        return CGRect(
+            x: frame.minX,
+            y: primary.frame.maxY - frame.maxY,
+            width: frame.width,
+            height: frame.height
+        )
     }
 
     // MARK: - AX Value Helpers

@@ -25,6 +25,6 @@ create-dmg \
 ## GitHub Release
 
 ```
-gh release create v1.1.0 Flux.dmg \
-  --title "Flux v1.1.0"
+gh release create v1.2.0 Flux.dmg \
+  --title "Flux v1.2.0"
 ```

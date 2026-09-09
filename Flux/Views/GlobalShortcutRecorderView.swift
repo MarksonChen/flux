@@ -1,6 +1,6 @@
 import AppKit
 
-final class GlobalShortcutRecorderView: NSView {
+final class GlobalShortcutRecorderView: NSView, ShortcutRecording {
     var keyCode: UInt16 = 0 {
         didSet { updateDisplay() }
     }
@@ -8,8 +8,23 @@ final class GlobalShortcutRecorderView: NSView {
         didSet { updateDisplay() }
     }
     var onShortcutChanged: ((UInt16, NSEvent.ModifierFlags) -> Void)?
+    var isDuplicateShortcut: ((UInt16, NSEvent.ModifierFlags) -> Bool)?
 
-    private var isRecording = false
+    private(set) var isRecording = false {
+        didSet {
+            guard isRecording != oldValue else { return }
+            // The live event tap would otherwise swallow (and act on) the very
+            // combination being recorded, making it impossible to re-record it.
+            if isRecording {
+                ShortcutManager.shared.beginSuspendingGlobalShortcuts()
+            } else {
+                ShortcutManager.shared.endSuspendingGlobalShortcuts()
+            }
+            recordButton.title = isRecording ? "Cancel" : "Record"
+            updateDisplay()
+        }
+    }
+
     private let textField: NSTextField
     private let recordButton: NSButton
 
@@ -37,10 +52,16 @@ final class GlobalShortcutRecorderView: NSView {
         setupView()
     }
 
+    deinit {
+        if isRecording {
+            ShortcutManager.shared.endSuspendingGlobalShortcuts()
+        }
+    }
+
     private func setupView() {
         let stack = NSStackView(views: [textField, recordButton])
         stack.orientation = .horizontal
-        stack.spacing = 8
+        stack.spacing = Design.Spacing.sm
         stack.translatesAutoresizingMaskIntoConstraints = false
         addSubview(stack)
 
@@ -65,48 +86,38 @@ final class GlobalShortcutRecorderView: NSView {
             textField.stringValue = "Press shortcut..."
             textField.textColor = .systemBlue
         } else {
-            textField.stringValue = formatShortcut()
+            textField.stringValue = KeyDisplay.string(keyCode: keyCode, modifiers: modifiers)
             textField.textColor = .labelColor
         }
     }
 
-    private func formatShortcut() -> String {
-        var parts: [String] = []
-        if modifiers.contains(.control) { parts.append("⌃") }
-        if modifiers.contains(.option) { parts.append("⌥") }
-        if modifiers.contains(.shift) { parts.append("⇧") }
-        if modifiers.contains(.command) { parts.append("⌘") }
-
-        let keyString = keyCodeToString(keyCode)
-        parts.append(keyString)
-        return parts.joined()
-    }
-
-    private func keyCodeToString(_ keyCode: UInt16) -> String {
-        let keyCodeMap: [UInt16: String] = [
-            0: "A", 1: "S", 2: "D", 3: "F", 4: "H", 5: "G", 6: "Z", 7: "X",
-            8: "C", 9: "V", 11: "B", 12: "Q", 13: "W", 14: "E", 15: "R",
-            16: "Y", 17: "T", 18: "1", 19: "2", 20: "3", 21: "4", 22: "6",
-            23: "5", 24: "=", 25: "9", 26: "7", 27: "-", 28: "8", 29: "0",
-            30: "]", 31: "O", 32: "U", 33: "[", 34: "I", 35: "P", 37: "L",
-            38: "J", 39: "'", 40: "K", 41: ";", 42: "\\", 43: ",", 44: "/",
-            45: "N", 46: "M", 47: ".", 50: "`", 49: "Space"
-        ]
-        return keyCodeMap[keyCode] ?? "?"
-    }
+    // MARK: - Recording
 
     @objc private func toggleRecording() {
-        isRecording.toggle()
         if isRecording {
-            recordButton.title = "Cancel"
-            window?.makeFirstResponder(self)
+            stopRecording()
         } else {
-            recordButton.title = "Record"
+            startRecording()
         }
-        updateDisplay()
+    }
+
+    private func startRecording() {
+        isRecording = true
+        window?.makeFirstResponder(self)
+    }
+
+    private func stopRecording() {
+        isRecording = false
     }
 
     override var acceptsFirstResponder: Bool { true }
+
+    override func resignFirstResponder() -> Bool {
+        if isRecording {
+            stopRecording()
+        }
+        return super.resignFirstResponder()
+    }
 
     override func keyDown(with event: NSEvent) {
         guard isRecording else {
@@ -114,25 +125,45 @@ final class GlobalShortcutRecorderView: NSView {
             return
         }
 
-        // Require at least one modifier key
-        let modifierMask: NSEvent.ModifierFlags = [.control, .option, .shift, .command]
-        let pressedModifiers = event.modifierFlags.intersection(modifierMask)
+        let pressedModifiers = event.modifierFlags.intersection(GlobalShortcutBindings.relevantModifiers)
 
-        guard !pressedModifiers.isEmpty else { return }
+        // Bare Escape cancels rather than becoming the shortcut.
+        if event.keyCode == 53 && pressedModifiers.isEmpty {
+            stopRecording()
+            return
+        }
 
+        // Require Control, Option or Command. A Shift-only combination such as ⇧T
+        // would hijack ordinary typing of capital letters in every app.
+        guard !pressedModifiers.isDisjoint(with: [.control, .option, .command]) else {
+            NSSound.beep()
+            return
+        }
+
+        if isDuplicateShortcut?(event.keyCode, pressedModifiers) == true {
+            stopRecording()
+            showDuplicateAlert(keyCode: event.keyCode, modifiers: pressedModifiers)
+            return
+        }
+
+        stopRecording()
         keyCode = event.keyCode
         modifiers = pressedModifiers
-        isRecording = false
-        recordButton.title = "Record"
-        updateDisplay()
         onShortcutChanged?(keyCode, modifiers)
+    }
+
+    private func showDuplicateAlert(keyCode: UInt16, modifiers: NSEvent.ModifierFlags) {
+        let alert = NSAlert()
+        alert.messageText = "Duplicate Shortcut"
+        alert.informativeText = "The shortcut '\(KeyDisplay.string(keyCode: keyCode, modifiers: modifiers))' is already assigned to the other global shortcut. Please choose a different shortcut."
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "OK")
+        alert.runModal()
     }
 
     override func cancelOperation(_ sender: Any?) {
         if isRecording {
-            isRecording = false
-            recordButton.title = "Record"
-            updateDisplay()
+            stopRecording()
         }
     }
 }

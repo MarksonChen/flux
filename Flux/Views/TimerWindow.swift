@@ -3,11 +3,31 @@ import CoreGraphics
 
 final class TimerWindow: NSWindow, FullScreenAXMonitorDelegate {
     private let timerView: TimerView
-    private var didDrag = false
-    private var dragOffset: NSPoint = .zero
+
+    // Button state. A click is a down *and* an up on this window. Tools that
+    // intercept mouse chords (e.g. BetterTouchTool's left+right click trigger)
+    // swallow the button-down but let the button-up through, and macOS then
+    // hands that orphan up to the last window that saw a down for that button,
+    // which can be this one even when the cursor is far away. Without these
+    // flags such an orphan right-mouse-up counted as a right-click and reset
+    // the timer.
+    private var leftButtonDownInWindow = false
+    private var rightButtonDownInWindow = false
+
+    // Dragging
+    private var isDragging = false
+    private var mouseDownLocation: NSPoint = .zero
+    /// Movement below this distance is treated as a click, not a drag, so a
+    /// slightly shaky click still triggers its action.
+    private static let dragThreshold: CGFloat = 3
+    /// How much of the window must stay on a screen while dragging, so the
+    /// borderless window can never be pushed fully off-screen and lost.
+    private static let minimumVisibleEdge: CGFloat = 24
+
+    // Click disambiguation
+    private var pendingSingleClick: DispatchWorkItem?
 
     // Full-screen hiding
-    private var pendingUpdate: DispatchWorkItem?
     private var pollTimer: DispatchSourceTimer?
     private var axMonitorActive = false
 
@@ -18,7 +38,7 @@ final class TimerWindow: NSWindow, FullScreenAXMonitorDelegate {
         timerView = TimerView(frame: .zero)
 
         super.init(
-            contentRect: NSRect(x: 0, y: 0, width: 150, height: 60),
+            contentRect: NSRect(origin: .zero, size: Design.WindowSize.timer),
             styleMask: [.borderless],
             backing: .buffered,
             defer: false
@@ -31,7 +51,7 @@ final class TimerWindow: NSWindow, FullScreenAXMonitorDelegate {
     }
 
     deinit {
-        pendingUpdate?.cancel()
+        pendingSingleClick?.cancel()
         pollTimer?.cancel()
         FullScreenAXMonitor.shared.stopMonitoring()
         NSWorkspace.shared.notificationCenter.removeObserver(self)
@@ -64,38 +84,54 @@ final class TimerWindow: NSWindow, FullScreenAXMonitorDelegate {
 
         setAccessibilityElement(true)
         setAccessibilityRole(.staticText)
+
+        // Size the window to its text now that the view is attached. Otherwise the
+        // saved origin is applied to the placeholder frame and the later resize
+        // (which keeps the top edge fixed) shifts the window down on every launch.
+        timerView.applySettings()
     }
 
-    private func restorePosition() {
-        if let savedPosition = Persistence.shared.windowPosition {
-            setFrameOrigin(savedPosition)
+    // MARK: - Position persistence
 
-            if let displayID = Persistence.shared.windowDisplayID {
-                let screens = NSScreen.screens
-                if let targetScreen = screens.first(where: { screen in
-                    let screenNumber = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID
-                    return screenNumber == displayID
-                }) {
-                    var newOrigin = savedPosition
-                    let screenFrame = targetScreen.frame
-                    newOrigin.x = max(screenFrame.minX, min(newOrigin.x, screenFrame.maxX - frame.width))
-                    newOrigin.y = max(screenFrame.minY, min(newOrigin.y, screenFrame.maxY - frame.height))
-                    setFrameOrigin(newOrigin)
-                }
-            }
-        } else {
+    private func restorePosition() {
+        guard let savedPosition = Persistence.shared.windowPosition else {
             center()
+            return
         }
+
+        // Prefer the display the window was last on. If that display is gone,
+        // fall back to whichever screen the saved point lands on, and finally to
+        // the main screen, so a position saved on a disconnected monitor never
+        // restores off-screen.
+        let savedRect = NSRect(origin: savedPosition, size: frame.size)
+        let screen = Self.screen(withDisplayID: Persistence.shared.windowDisplayID)
+            ?? NSScreen.screens.first { $0.frame.intersects(savedRect) }
+            ?? NSScreen.main
+
+        guard let screen else {
+            setFrameOrigin(savedPosition)
+            return
+        }
+
+        setFrameOrigin(Self.clamp(origin: savedPosition, size: frame.size, into: screen.frame))
     }
 
     private func savePosition() {
         Persistence.shared.windowPosition = frame.origin
+        Persistence.shared.windowDisplayID = screen?.displayID
+    }
 
-        if let screen = screen {
-            if let screenNumber = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID {
-                Persistence.shared.windowDisplayID = screenNumber
-            }
-        }
+    private static func screen(withDisplayID id: CGDirectDisplayID?) -> NSScreen? {
+        guard let id else { return nil }
+        return NSScreen.screens.first { $0.displayID == id }
+    }
+
+    /// Origin that keeps a window of `size` entirely inside `bounds`.
+    private static func clamp(origin: NSPoint, size: NSSize, into bounds: NSRect) -> NSPoint {
+        NSPoint(
+            x: max(bounds.minX, min(origin.x, bounds.maxX - size.width)),
+            y: max(bounds.minY, min(origin.y, bounds.maxY - size.height))
+        )
     }
 
     func refreshAppearance() {
@@ -142,18 +178,6 @@ final class TimerWindow: NSWindow, FullScreenAXMonitorDelegate {
         }
 
         // Sequoia quirk: ordering-in can override behavior; reassert next runloop
-        DispatchQueue.main.async { [weak self] in
-            self?.applyDesiredCollectionBehavior()
-        }
-    }
-
-    /// Centralized hide method that reasserts collectionBehavior after hide
-    private func hideTimerWindow() {
-        if isVisible {
-            orderOut(nil)
-        }
-
-        // Reasserting after orderOut prevents "sticky space" edge cases
         DispatchQueue.main.async { [weak self] in
             self?.applyDesiredCollectionBehavior()
         }
@@ -221,6 +245,10 @@ final class TimerWindow: NSWindow, FullScreenAXMonitorDelegate {
         NotificationCenter.default.addObserver(self, selector: #selector(scheduleFullScreenCheck),
                                                name: NSWindow.didExitFullScreenNotification, object: nil)
 
+        // Accessibility may be granted after launch; start the AX monitor then.
+        NotificationCenter.default.addObserver(self, selector: #selector(accessibilityPermissionGranted),
+                                               name: ShortcutManager.accessibilityPermissionGranted, object: nil)
+
         scheduleFullScreenCheck()
     }
 
@@ -229,6 +257,11 @@ final class TimerWindow: NSWindow, FullScreenAXMonitorDelegate {
         monitor.delegate = self
         monitor.startMonitoring()
         axMonitorActive = AXIsProcessTrusted()
+    }
+
+    @objc private func accessibilityPermissionGranted() {
+        setupAXMonitor()
+        scheduleFullScreenCheck()
     }
 
     // MARK: - FullScreenAXMonitorDelegate
@@ -259,8 +292,6 @@ final class TimerWindow: NSWindow, FullScreenAXMonitorDelegate {
     }
 
     @objc private func scheduleFullScreenCheck() {
-        pendingUpdate?.cancel()
-
         // Trigger AX monitor reattachment (handles space switches, app changes)
         FullScreenAXMonitor.shared.reattach()
 
@@ -376,45 +407,129 @@ final class TimerWindow: NSWindow, FullScreenAXMonitorDelegate {
         pollTimer = nil
     }
 
+    // MARK: - Mouse handling
+
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { true }
 
     override func mouseDown(with event: NSEvent) {
-        didDrag = false
-        dragOffset = event.locationInWindow
+        leftButtonDownInWindow = true
+        isDragging = false
+        mouseDownLocation = event.locationInWindow
     }
 
     override func mouseDragged(with event: NSEvent) {
-        didDrag = true
-        let screenLocation = NSEvent.mouseLocation
-        let newOrigin = NSPoint(
-            x: screenLocation.x - dragOffset.x,
-            y: screenLocation.y - dragOffset.y
+        guard leftButtonDownInWindow else { return }
+        if !isDragging {
+            let dx = event.locationInWindow.x - mouseDownLocation.x
+            let dy = event.locationInWindow.y - mouseDownLocation.y
+            guard hypot(dx, dy) >= Self.dragThreshold else { return }
+            isDragging = true
+            cancelPendingSingleClick()
+        }
+
+        let mouseLocation = NSEvent.mouseLocation
+        let proposedOrigin = NSPoint(
+            x: mouseLocation.x - mouseDownLocation.x,
+            y: mouseLocation.y - mouseDownLocation.y
         )
-        setFrameOrigin(newOrigin)
+        setFrameOrigin(constrainedForDragging(proposedOrigin, mouseLocation: mouseLocation))
+    }
+
+    /// Keeps at least `minimumVisibleEdge` points of the window on the screen
+    /// under the cursor, which still lets the window cross between displays.
+    private func constrainedForDragging(_ origin: NSPoint, mouseLocation: NSPoint) -> NSPoint {
+        let screenUnderMouse = NSScreen.screens.first { NSMouseInRect(mouseLocation, $0.frame, false) }
+        guard let bounds = (screenUnderMouse ?? screen ?? NSScreen.main)?.frame else { return origin }
+
+        let edge = Self.minimumVisibleEdge
+        let size = frame.size
+        return NSPoint(
+            x: max(bounds.minX - size.width + edge, min(origin.x, bounds.maxX - edge)),
+            y: max(bounds.minY - size.height + edge, min(origin.y, bounds.maxY - edge))
+        )
     }
 
     override func mouseUp(with event: NSEvent) {
-        if didDrag {
+        guard leftButtonDownInWindow else { return }  // orphan up, not a click
+        leftButtonDownInWindow = false
+
+        if isDragging {
+            isDragging = false
             savePosition()
-        } else if event.clickCount == 2 {
-            ShortcutManager.shared.handleLeftDoubleClick()
-        } else {
-            ShortcutManager.shared.handleLeftClick()
+            return
         }
+
+        let bindings = Persistence.shared.shortcutBindings
+        dispatchClick(
+            event,
+            singleAction: bindings.leftClickAction,
+            doubleAction: bindings.leftDoubleClickAction,
+            single: ShortcutManager.shared.handleLeftClick,
+            double: ShortcutManager.shared.handleLeftDoubleClick
+        )
     }
 
     override func rightMouseDown(with event: NSEvent) {
-        // Capture right mouse down to prevent any default window behavior
+        // Swallow the default behavior; just remember that the press started here.
+        rightButtonDownInWindow = true
     }
 
     override func rightMouseUp(with event: NSEvent) {
-        if event.clickCount == 2 {
-            ShortcutManager.shared.handleRightDoubleClick()
-        } else {
-            ShortcutManager.shared.handleRightClick()
+        guard rightButtonDownInWindow else { return }  // orphan up, not a click
+        rightButtonDownInWindow = false
+
+        let bindings = Persistence.shared.shortcutBindings
+        dispatchClick(
+            event,
+            singleAction: bindings.rightClickAction,
+            doubleAction: bindings.rightDoubleClickAction,
+            single: ShortcutManager.shared.handleRightClick,
+            double: ShortcutManager.shared.handleRightDoubleClick
+        )
+    }
+
+    /// Routes a click to its single or double-click handler.
+    ///
+    /// The first click of a double-click arrives with `clickCount == 1`, so when a
+    /// double-click action is configured the single-click action is deferred by
+    /// the system double-click interval and cancelled if a second click arrives.
+    /// Otherwise a double-click would fire both actions.
+    private func dispatchClick(
+        _ event: NSEvent,
+        singleAction: ShortcutBindings.MouseAction,
+        doubleAction: ShortcutBindings.MouseAction,
+        single: @escaping () -> Void,
+        double: @escaping () -> Void
+    ) {
+        switch event.clickCount {
+        case 1:
+            guard singleAction != .none else { return }
+            guard doubleAction != .none else {
+                single()
+                return
+            }
+            cancelPendingSingleClick()
+            let workItem = DispatchWorkItem { [weak self] in
+                self?.pendingSingleClick = nil
+                single()
+            }
+            pendingSingleClick = workItem
+            DispatchQueue.main.asyncAfter(deadline: .now() + NSEvent.doubleClickInterval, execute: workItem)
+        case 2:
+            cancelPendingSingleClick()
+            double()
+        default:
+            cancelPendingSingleClick()
         }
     }
+
+    private func cancelPendingSingleClick() {
+        pendingSingleClick?.cancel()
+        pendingSingleClick = nil
+    }
+
+    // MARK: - Keyboard & accessibility
 
     override func keyDown(with event: NSEvent) {
         if !ShortcutManager.shared.handleKeyDown(event) {
@@ -424,5 +539,11 @@ final class TimerWindow: NSWindow, FullScreenAXMonitorDelegate {
 
     override func accessibilityValue() -> Any? {
         return TimerController.shared.displayTime
+    }
+}
+
+private extension NSScreen {
+    var displayID: CGDirectDisplayID? {
+        (deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.uint32Value
     }
 }

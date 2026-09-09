@@ -1,9 +1,21 @@
 import AppKit
 
+/// UserDefaults wrapper for all app state.
+///
+/// Every JSON-backed value is cached in memory and written through on set. The
+/// getters are hit on hot paths (every system-wide key press in the global event
+/// tap, every click, every fullscreen check), so decoding from UserDefaults on
+/// each read is avoided. This app is the only writer of its defaults, so the
+/// cache never goes stale.
 final class Persistence {
     static let shared = Persistence()
 
+    /// Posted on the main thread after `timerEvents` changes.
+    static let timerEventsDidChange = Notification.Name("Persistence.timerEventsDidChange")
+
     private let defaults = UserDefaults.standard
+    private let encoder = JSONEncoder()
+    private let decoder = JSONDecoder()
 
     private enum Keys {
         static let timerState = "timerState"
@@ -18,88 +30,75 @@ final class Persistence {
 
     private init() {}
 
+    // MARK: - Cached values
+
+    private lazy var cachedTimerState: TimerState = load(Keys.timerState, default: TimerState())
+    private lazy var cachedAppSettings: AppSettings = load(Keys.appSettings, default: .default)
+    private lazy var cachedShortcutBindings: ShortcutBindings = load(Keys.shortcutBindings, default: .default)
+    private lazy var cachedGlobalShortcutBindings: GlobalShortcutBindings = load(Keys.globalShortcutBindings, default: .default)
+    private lazy var cachedTimerEvents: [TimerEvent] = load(Keys.timerEvents, default: [])
+
+    private func load<T: Decodable>(_ key: String, default defaultValue: T) -> T {
+        guard let data = defaults.data(forKey: key),
+              let value = try? decoder.decode(T.self, from: data) else {
+            return defaultValue
+        }
+        return value
+    }
+
+    private func store<T: Encodable>(_ value: T, forKey key: String) {
+        guard let data = try? encoder.encode(value) else { return }
+        defaults.set(data, forKey: key)
+    }
+
     // MARK: - Timer State
 
     var timerState: TimerState {
-        get {
-            guard let data = defaults.data(forKey: Keys.timerState),
-                  let state = try? JSONDecoder().decode(TimerState.self, from: data) else {
-                return TimerState()
-            }
-            return state
-        }
+        get { cachedTimerState }
         set {
-            if let data = try? JSONEncoder().encode(newValue) {
-                defaults.set(data, forKey: Keys.timerState)
-            }
+            cachedTimerState = newValue
+            store(newValue, forKey: Keys.timerState)
         }
     }
 
     // MARK: - App Settings
 
     var appSettings: AppSettings {
-        get {
-            guard let data = defaults.data(forKey: Keys.appSettings),
-                  let settings = try? JSONDecoder().decode(AppSettings.self, from: data) else {
-                return AppSettings.default
-            }
-            return settings
-        }
+        get { cachedAppSettings }
         set {
-            if let data = try? JSONEncoder().encode(newValue) {
-                defaults.set(data, forKey: Keys.appSettings)
-            }
+            cachedAppSettings = newValue
+            store(newValue, forKey: Keys.appSettings)
         }
     }
 
     // MARK: - Shortcut Bindings
 
     var shortcutBindings: ShortcutBindings {
-        get {
-            guard let data = defaults.data(forKey: Keys.shortcutBindings),
-                  let bindings = try? JSONDecoder().decode(ShortcutBindings.self, from: data) else {
-                return ShortcutBindings.default
-            }
-            return bindings
-        }
+        get { cachedShortcutBindings }
         set {
-            if let data = try? JSONEncoder().encode(newValue) {
-                defaults.set(data, forKey: Keys.shortcutBindings)
-            }
+            cachedShortcutBindings = newValue
+            store(newValue, forKey: Keys.shortcutBindings)
         }
     }
 
     // MARK: - Global Shortcut Bindings
 
     var globalShortcutBindings: GlobalShortcutBindings {
-        get {
-            guard let data = defaults.data(forKey: Keys.globalShortcutBindings),
-                  let bindings = try? JSONDecoder().decode(GlobalShortcutBindings.self, from: data) else {
-                return GlobalShortcutBindings.default
-            }
-            return bindings
-        }
+        get { cachedGlobalShortcutBindings }
         set {
-            if let data = try? JSONEncoder().encode(newValue) {
-                defaults.set(data, forKey: Keys.globalShortcutBindings)
-            }
+            cachedGlobalShortcutBindings = newValue
+            store(newValue, forKey: Keys.globalShortcutBindings)
         }
     }
 
     // MARK: - Timer Events
 
     var timerEvents: [TimerEvent] {
-        get {
-            guard let data = defaults.data(forKey: Keys.timerEvents),
-                  let events = try? JSONDecoder().decode([TimerEvent].self, from: data) else {
-                return []
-            }
-            return events
-        }
+        get { cachedTimerEvents }
         set {
-            if let data = try? JSONEncoder().encode(newValue) {
-                defaults.set(data, forKey: Keys.timerEvents)
-            }
+            cachedTimerEvents = newValue
+            store(newValue, forKey: Keys.timerEvents)
+            NotificationCenter.default.post(name: Persistence.timerEventsDidChange, object: self)
         }
     }
 
@@ -139,8 +138,10 @@ final class Persistence {
 
     // MARK: - Reset
 
-    func resetSettings() {
-        appSettings = AppSettings.default
+    /// Restores font, size, color and opacity. General settings are untouched so a
+    /// registered login item never goes out of sync with its checkbox.
+    func resetAppearance() {
+        appSettings = appSettings.resettingAppearance()
     }
 
     func resetShortcuts() {

@@ -16,6 +16,10 @@ final class GlassWindow: NSWindow {
         isOpaque = false
         hasShadow = true
 
+        // Dialogs are owned by long-lived window controllers and reopened
+        // repeatedly; AppKit must not release them on close.
+        isReleasedWhenClosed = false
+
         // Don't remember which desktop the window was on - appear on current space
         collectionBehavior = [.moveToActiveSpace]
 
@@ -94,12 +98,22 @@ final class GlassWindow: NSWindow {
     override var canBecomeMain: Bool { true }
 
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
-        let chars = event.charactersIgnoringModifiers ?? ""
+        // A shortcut recorder must see every combination, including ⌘W and the Quit key.
+        if let recorder = firstResponder as? ShortcutRecording, recorder.isRecording {
+            return super.performKeyEquivalent(with: event)
+        }
+
+        let chars = (event.charactersIgnoringModifiers ?? "").lowercased()
         let hasCommand = event.modifierFlags.contains(.command)
 
         // Handle cmd+W to close window
-        if hasCommand && chars.lowercased() == "w" {
+        if hasCommand && chars == "w" {
             close()
+            return true
+        }
+
+        // Honor the configurable Quit shortcut from dialogs too, not only the timer window.
+        if ShortcutManager.shared.handleQuitKeyEquivalent(event) {
             return true
         }
 
